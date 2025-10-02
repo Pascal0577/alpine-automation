@@ -114,21 +114,21 @@ load_modules() {
     find /sys/ -name modalias -print0 | xargs -0 sort -u -z | xargs -0 modprobe -abq
 
     # Load necessary kernel modules. Don't judge me for how I did this
-    modprobe loop \
-            simpledrm \
-            sd_mod \
-            ehci_hcd \
-            xhci_hcd \
-            usbhid \
-            usb-storage \
-            vfat \
-            nls_cp437 \
-            overlay \
-            squashfs \
-            f2fs \
-            ext4 \
-            mbcache \
-            jbd2 \
+    modprobe loop
+    modprobe simpledrm
+    modprobe sd_mod
+    modprobe ehci_hcd
+    modprobe xhci_hcd
+    modprobe xhci_pci
+    modprobe usbhid
+    modprobe usb-storage
+    modprobe vfat
+    modprobe nls_cp437
+    modprobe overlay
+    modprobe squashfs
+    modprobe ext4
+    modprobe mbcache
+    modprobe jbd2
 
     # Load zram module if needed
     [ "$use_zram" = "true" ] && modprobe zram
@@ -214,14 +214,17 @@ mount_device() {
     fi
 
     # Fallback if mounting via UUID is unavailable for whatever reason
-    if [ "$mount_needed" = "true" ]; then
-        if root_dev=$(detect_root_fallback); then
-            safe_mount "/dev/$root_dev" /mnt
-            log_info "Mounting /dev/$root_dev to /mnt by device name"
-        else
-            emergency_shell "No devices with rootfs.squashfs found"
-        fi
-    fi
+    # if [ "$mount_needed" = "true" ]; then
+    #     if root_dev=$(detect_root_fallback); then
+    #         safe_mount "/dev/$root_dev" /mnt
+    #         log_info "Mounting /dev/$root_dev to /mnt by device name"
+    #     else
+    #         emergency_shell "No devices with rootfs.squashfs found"
+    #     fi
+    # fi
+    
+    safe_mount "/dev/sda2" /mnt
+
     return 0
 }
 
@@ -299,6 +302,8 @@ setup_switchroot() {
 }
 
 main() {
+    /bin/busybox --install -s 
+
     mount -t proc none /proc
     mount -t sysfs none /sys
     mount -t devtmpfs none /dev
@@ -329,6 +334,8 @@ main() {
     if [ ! "$found" = "true" ]; then
         emergency_shell "No filesystems detected."
     fi
+
+    mkdir /mnt
 
     mount_device
 

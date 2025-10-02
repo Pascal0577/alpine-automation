@@ -39,10 +39,10 @@ EOF
 
 install_packages() {
   # local packages = ("linux-lts" "networkmanager")
-  apk add alpine-base
-  apk add linux-lts
+  apk add alpine-base linux-lts
   apk add networkmanager-wifi networkmanager-tui networkmanager-cli
   apk add util-linux util-linux-login linux-pam
+  apk add systemd-efistub ukify
   setup-wayland-base
 }
 
@@ -73,6 +73,8 @@ EOF
 }
 
 main() {
+  root_uuid="$(cat ./root_uuid)"
+
   update_repositories
 
   install_packages
@@ -81,9 +83,20 @@ main() {
 
   configure_etc
 
+  echo 'features="base ext4 keymap kms scsi usb zram squashfs simpledrm"' > /etc/mkinitfs/mkinitfs.conf
+
+  mkinitfs -i /usr/share/mkinitfs/init.sh "$(ls /lib/modules/)"
+
+  ukify \
+    /boot/vmlinuz-lts \
+    /boot/initramfs-lts \
+    --stub /usr/lib/systemd/boot/efi/linuxx64.efi.stub \
+    --cmdline "root=UUID=$root_uuid zram" \
+    --output /boot/EFI/BOOT/BOOTX64.EFI
+
   passwd
 
-  umoumt /boot
+  umount /boot
 }
 
 main "$@"

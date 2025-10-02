@@ -7,11 +7,20 @@ dir="alpine"
 archive_name="alpine-minirootfs"
 command="chroot-script.sh"
 checksum_check=1
+no_device=0
 
 cleanup_happened=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --no-device)
+      no_device=1
+      shift
+      ;;
+    --no-cleanup)
+      cleanup_happened=1
+      shift
+      ;;
     --no-checksum)
       checksum_check=0
       shift
@@ -58,8 +67,12 @@ check_command() {
 
 cleanup() {
   [ "$cleanup_happened" = "0" ] && {
+    mountpoint -q "$dir/boot" && umount "$dir/boot"
+    mountpoint -q "$dir" && umount "$dir"
     [ -f "alpine-rootfs-temp.tar.gz.tmp" ] && mv alpine-rootfs-temp.tar.gz alpine-rootfs-temp.tar.gz
-    # [ -d "$dir" ] && rm -rf "$dir"
+    [ -f "root_uuid" ] && rm "root_uuid"
+    [ -f "vfat_uuid" ] && rm "vfat_uuid"
+    [ -d "$dir" ] && rm -rf "$dir"
   }
   cleanup_happened=1
 }
@@ -74,6 +87,7 @@ main() {
   check_command mkdir
   check_command cd
   check_command mksquashfs
+  check_command awk
   [ "$checksum_check" = "1" ] && check_command sha256sum
 
   [ "$edge" = "1" ] && command="$command --edge"
@@ -81,14 +95,27 @@ main() {
   [ -f "$archive_name.tar.gz" ] && archive_name="$archive_name-2"
   [ -d "$dir" ] && log_error "$dir exists. For safety, please choose a different temporary directory name"
 
-  mkdir "$dir"                                        || log_error "Failed to create dir: $dir"
+  mkdir "$dir" || log_error "Failed to create dir: $dir"
   log_debug "Created $dir"
 
-  cd "$dir"                                           || log_error "Failed to cd into $dir"
-  log_debug "Changed directory to $dir"
+  if [ "$no_device" = "0" ]; then
+    ./select-device.sh
+
+    efi_uuid=$(awk '{print $1}' ./vfat_uuid)
+    root_uuid=$(awk '{print $1}' ./root_uuid)
+
+    mkdir -p "$dir/boot"
+    mount "/dev/disk/by-uuid/$efi_uuid" "$dir/boot"
+  else
+    log_debug "Setting up /boot"
+    mkdir -p boot "$dir/boot"
+    mount --bind boot "$dir/boot"
+  fi
+
+  cd "$dir" || log_error "Failed to cd into $dir"
 
   log_debug "Downloading $archive_name.tar.gz from $url"
-  curl -o "$archive_name.tar.gz" "$url"               || log_error "Failed to download minirootfs"
+  curl -o "$archive_name.tar.gz" "$url" || log_error "Failed to download minirootfs"
   
   log_debug "Downloading $archive_name.tar.gz.sha256 from $url.sha256"
   curl -o "$archive_name.tar.gz.sha256" "$url.sha256" || log_error "Failed to download minirootfs"
@@ -107,7 +134,7 @@ main() {
   log_debug "Cleaning up archive"
   rm "$archive_name.tar.gz" || log_error "Failed to remove tar archive"
 
-  log_debug "Cleanign up checksum"
+  log_debug "Cleaning up checksum"
   rm "$archive_name.tar.gz.sha256" || log_error "Failed to remove tar archive checksum"
 
   log_debug "Changing directory to $dir/.."
@@ -116,25 +143,24 @@ main() {
   log_debug "Copying scripts to $dir"
   mkdir "$dir/etc/init.d/"                             || log_error "Failed to create /etc/init.d/"
   mkdir -p "$dir/usr/share/mkinitfs/"                  || log_error "Failed to create /usr/share/mkinitfs"
+  mkdir -p "$dir/boot/EFI/BOOT/"                            || log_error "Failed to create /usr/share/mkinitfs"
+  cp ./root_uuid "$dir"
   cp ./chroot-script.sh "$dir/bin/"                    || log_error "Failed to move chroot script"
   cp ./squash-upperdir "$dir/bin/"                     || log_error "Failed to copy squash-upperdir script"
   cp ./squashdir "$dir/etc/init.d/"                    || log_error "Failed to copy squashdir rc script"
-  cp ./init.sh "$dir/usr/share/mkinitfs/mkinitfs-init" || log_error "Failed to copy init.sh"
+  cp ./init.sh "$dir/usr/share/mkinitfs/initrmafs-init" || log_error "Failed to copy init.sh"
   cp ./init.sh "$dir/usr/share/mkinitfs/init.sh"
-
-  log_debug "Setting up /boot"
-  # mkdir -p stuff "$dir/boot"
-  # mount --bind stuff "$dir/boot"
 
   log_debug "chrooting into $dir with command $command"
   ./auto-chroot.sh "$dir" "$command" || log_error "Something went wrong during the chroot script"
 
   log_debug "Cleaning up chroot script from chroot environment"
   rm "$dir/bin/chroot-script.sh" || log_error "Failed to remove chroot script from minirootfs"
+  mountpoint -q "$dir/boot" && umount "$dir/boot"
 
   log_debug "Creating squashfs images"
-  mksquashfs "$dir" rootfs.squashfs -e "$(realpath ./alpine/lib/firmware/)"/* || log_error "Failed to create rootfs.squashfs"
-  mksquashfs "$(realpath ./alpine/lib/firmware)" firmware.squashfs            || log_error "Failed to create firmware.squashfs"
+  mksquashfs "$dir" rootfs.squashfs -comp lz4 -e "$(realpath ./alpine/lib/firmware/)"/* || log_error "Failed to create rootfs.squashfs"
+  mksquashfs "$(realpath ./alpine/lib/firmware)" firmware.squashfs -comp lz4            || log_error "Failed to create firmware.squashfs"
 }
 
 main "$@"
