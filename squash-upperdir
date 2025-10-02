@@ -1,0 +1,12 @@
+#!/bin/sh
+
+COMPRESSION="lz4"
+
+[ -n "$1" ] && COMPRESSION="$1"
+
+[ -f /persist/upperfs.squashfs ] && mv /persist/upperfs.squashfs /persist/upperfs-backup.squashfs
+
+if ! mksquashfs /mnt/upperdir /persist/upperfs.squashfs -comp "$COMPRESSION" -noappend; then
+  rm /persist/upperfs.squashfs
+  mksquashfs /mnt/upperdir /persist/upperfs.squashfs -comp "$COMPRESSION" -noappend
+fi

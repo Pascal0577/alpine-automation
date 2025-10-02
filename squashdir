@@ -1,0 +1,14 @@
+#!/sbin/openrc-run
+description="Squash the upperdirectory on shutdown"
+rc_shutdown=yes
+
+depend() {
+	need local
+	need localmount
+}
+
+start() {
+	ebegin "Squashing Upperdir..."
+  /bin/squash-upperdir	
+	eend $?
+}
