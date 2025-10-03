@@ -322,9 +322,6 @@ main() {
   [ "$no_device" != 1 ] && deploy_to_root_device
 
   build_successful=1
-
-  # final_cleanup
-  
   log_info "Build completed successfully!"
   { [ "$no_device" = "1" ] && [ -z "$root_uuid" ]; } && log_info "Build completed, but system is not bootable!"
 }
