@@ -6,14 +6,18 @@
   };
 
   outputs = { self, nixpkgs }:
-    {
-      devShell.x86_64-linux = nixpkgs.lib.mkShell {
-        buildInputs = with nixpkgs; [
-          squashfsTools
-          e2fsprogs
-          cpio
-          systemdUkify
-        ];
-      };
+  let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+  in
+  {
+    devShell.x86_64-linux = pkgs.mkShell {
+      buildInputs = with pkgs; [
+        squashfsTools
+        e2fsprogs
+        cpio
+        systemdUkify
+      ];
     };
+  };
 }
