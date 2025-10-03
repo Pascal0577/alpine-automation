@@ -251,6 +251,8 @@ setup_overlay() {
         log_info "Using tmpfs for overlayfs upperdir"
     fi
 
+    mkdir -p /sysroot/upper/upper /sysroot/upper/work
+
     # Mount squashfs root filesystem. This is NOT in RAM.
     mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop
 
@@ -289,7 +291,7 @@ setup_switchroot() {
     mount --move /sysroot/rootfs /sysroot/overlay_root/mnt/rootfs
 
     mkdir -p /sysroot/overlay_root/mnt/firmware
-    mount --move /sysroot/firmware /sysroot/overlay_root/mnt/firmware
+    mount --move /sysroot/firmware /sysroot/overlay_root/lib/firmware
 
     # If clean boot is active, then make sure the upperdir lives in a place it won't be squashed
     if [ "$boot_type" = "clean_boot" ]; then

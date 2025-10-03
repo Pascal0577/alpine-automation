@@ -1,0 +1,8 @@
+/bin/sh
+/bin/busybox
+/sbin/modprobe
+/lib/mdev
+/etc/modprobe.d/*.conf
+/etc/mdev.conf
+/sbin/nlplug-findfs
+/usr/bin/unsquashfs

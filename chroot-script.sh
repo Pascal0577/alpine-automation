@@ -29,7 +29,7 @@ update_repositories() {
     cat > /etc/apk/repositories<< EOF
 https://dl-cdn.alpinelinux.org/alpine/edge/main
 https://dl-cdn.alpinelinux.org/alpine/edge/community
-https://dl-cdn.alpinelinux.org/alpine/edge/testing
+@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing
 EOF
     }
 
@@ -39,15 +39,14 @@ EOF
 
 install_packages() {
   # local packages = ("linux-lts" "networkmanager")
-  apk add alpine-base linux-lts
-  apk add networkmanager-wifi networkmanager-tui networkmanager-cli
+  apk add alpine-base linux-lts wpa_supplicant
   apk add util-linux util-linux-login linux-pam
-  apk add systemd-efistub ukify
+  apk add systemd-efistub ukify squashfs-tools
   setup-wayland-base
 }
 
 configure_services() {
-  rc-update add hwdrivers default
+  rc-update add hwdrivers boot
   rc-update add elogind default
   rc-update add squashdir shutdown
 }
@@ -60,16 +59,20 @@ auto wlan0
 iface wlan0 inet dhcp
 EOF
 
-  cat > /etc/pam.d/login << EOF
-auth       required     pam_securetty.so
-auth       required     pam_unix.so
-account    required     pam_unix.so
-session    required     pam_unix.so
-session    required     pam_env.so
-session    required     pam_elogind.so
-EOF
+#  cat > /etc/pam.d/login << EOF
+#auth       required     pam_securetty.so
+#auth       required     pam_unix.so
+#account    required     pam_unix.so
+#session    required     pam_unix.so
+#session    required     pam_env.so
+#session    required     pam_elogind.so
+#EOF
 
   sed -i 's|/sbin/getty|/sbin/agetty|g' /etc/inittab
+
+  # https://web.archive.org/web/20251002224414/https://lists.alpinelinux.org/~alpine/users/%3C61b39753.1c69fb81.d43fe.c2b9%40mx.google.com%3E
+  echo "messagebus:x:104:messagebus" >> /etc/group
+  echo "messagebus:x:99:99:messagebus user:/run/dbus:/sbin/nologin" >> /etc/passwd
 }
 
 main() {
@@ -83,7 +86,7 @@ main() {
 
   configure_etc
 
-  echo 'features="base ext4 keymap kms scsi usb zram squashfs simpledrm"' > /etc/mkinitfs/mkinitfs.conf
+  echo 'features="base ext4 keymap kms scsi usb zram squashfs simpledrm custom"' > /etc/mkinitfs/mkinitfs.conf
 
   mkinitfs -i /usr/share/mkinitfs/init.sh "$(ls /lib/modules/)"
 
@@ -95,6 +98,12 @@ main() {
     --output /boot/EFI/BOOT/BOOTX64.EFI
 
   passwd
+
+  # addgroup -S messagebus
+  # adduser -S -D -H -s /sbin/nologin -G messagebus messagebus
+
+  rc-update del dbus sysinit
+  rc-update add dbus default
 
   umount /boot
 }
