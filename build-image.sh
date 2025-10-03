@@ -178,6 +178,7 @@ main() {
   umount "/dev/disk/by-uuid/$root_uuid"
 
   cd ..
+  rm -rf ./build
 }
 
 main "$@"
