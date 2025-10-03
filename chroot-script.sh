@@ -49,6 +49,8 @@ configure_services() {
   rc-update add hwdrivers boot
   rc-update add elogind default
   rc-update add squashdir shutdown
+  rc-update del dbus sysinit
+  rc-update add dbus default
 }
 
 configure_etc() {
@@ -59,14 +61,14 @@ auto wlan0
 iface wlan0 inet dhcp
 EOF
 
-#  cat > /etc/pam.d/login << EOF
-#auth       required     pam_securetty.so
-#auth       required     pam_unix.so
-#account    required     pam_unix.so
-#session    required     pam_unix.so
-#session    required     pam_env.so
-#session    required     pam_elogind.so
-#EOF
+  cat > /etc/pam.d/login << EOF
+auth       required     pam_securetty.so
+auth       required     pam_unix.so
+account    required     pam_unix.so
+session    required     pam_unix.so
+session    required     pam_env.so
+session    required     pam_elogind.so
+EOF
 
   sed -i 's|/sbin/getty|/sbin/agetty|g' /etc/inittab
 
@@ -99,13 +101,7 @@ main() {
 
   passwd
 
-  # addgroup -S messagebus
-  # adduser -S -D -H -s /sbin/nologin -G messagebus messagebus
-
-  rc-update del dbus sysinit
-  rc-update add dbus default
-
-  umount /boot
+  # umount /boot
 }
 
 main "$@"

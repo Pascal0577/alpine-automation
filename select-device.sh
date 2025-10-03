@@ -69,6 +69,3 @@ rm -f "$vfat_tmp" "$root_tmp" /tmp/vfat_menu /tmp/root_menu
 
 echo "$selected_vfat_uuid" > ./vfat_uuid
 echo "$selected_root_uuid" > ./root_uuid
-
-# Output selections
-# echo "$selected_vfat_uuid $selected_root_uuid"

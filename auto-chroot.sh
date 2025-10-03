@@ -9,24 +9,26 @@ white="$(printf '\033[0m')"
 verbose=0
 did_cleanup=0
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -v|--verbose)
-      verbose=1
-      shift ;;
-    -h|--help)
-      echo "Usage: $0 [-v|--verbose] MOUNTPOINT [COMMAND]"
-      exit 0 ;;
-    --)
-      shift; 
-      break ;;
-    -*)
-      echo "Unknown option: $1"
-      exit 1 ;;
-    *)
-      break ;;
-  esac
-done
+parse_cmdline() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -v|--verbose)
+        verbose=1
+        shift ;;
+      -h|--help)
+        echo "Usage: $0 [-v|--verbose] MOUNTPOINT [COMMAND]"
+        exit 0 ;;
+      --)
+        shift; 
+        break ;;
+      -*)
+        echo "Unknown option: $1"
+        exit 1 ;;
+      *)
+        break ;;
+    esac
+  done
+}
 
 # Fancy unicode characters yaayyyyy :3
 if printf '%s' "$LANG" | grep -q 'UTF-8'; then
@@ -165,6 +167,8 @@ main() {
   check_command chroot
   check_command realpath
   check_command mountpoint
+
+  parse_cmdline "$@"
   
   log_debug "Taking realpath of $mountpoint"
   mountpoint="$(realpath "$mountpoint")"
@@ -193,7 +197,7 @@ main() {
   if mount_filesystems "$mountpoint"; then
     setup_network "$mountpoint"
     log_debug "Command running: chroot '$mountpoint' '$shell' -c '$command; exit 0'"
-    chroot "$mountpoint" "$shell" -c "$command; exit 0" || log_error "Failed to chroot into $mountpoint"
+    chroot "$mountpoint" "$shell" -c "$command; exit 0"
   else
     exit_code=$?
     log_error "Filesystem mounts failed with exit code: $exit_code"
