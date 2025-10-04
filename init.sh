@@ -78,7 +78,7 @@ parse_cmdline() {
 # Mount all available filesystems and check for rootfs.squashfs. First filesystem to have it is returned
 # TODO: Try to detect root based on filesystem type.
 detect_root_fallback() {
-    for dev in /sys/class/block/*; do
+    for dev in /dev/disk/by-uuid/*; do
         # Handle empty case
         [ ! -e "$dev" ] && continue  
         device=$(basename "$dev")
@@ -89,7 +89,7 @@ detect_root_fallback() {
                 continue ;;
         esac
  
-        if ! mount -o ro "/dev/$device" /mnt 2>/dev/null; then
+        if ! mount "/dev/$device" /mnt 2>/dev/null; then
             log_warn "Could not mount $device. Skipping."
             continue
         fi
@@ -208,22 +208,22 @@ mount_device() {
     fi
 
     # Attempt to mount filesystem based off UUID
-    if [ -n "$root_uuid" ] && mount UUID="$root_uuid" /mnt 2>/dev/null; then
+    if mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null; then
         log_info "Mounting filesystem by UUID"
         mount_needed=false
     fi
 
     # Fallback if mounting via UUID is unavailable for whatever reason
-    # if [ "$mount_needed" = "true" ]; then
-    #     if root_dev=$(detect_root_fallback); then
-    #         safe_mount "/dev/$root_dev" /mnt
-    #         log_info "Mounting /dev/$root_dev to /mnt by device name"
-    #     else
-    #         emergency_shell "No devices with rootfs.squashfs found"
-    #     fi
-    # fi
+    if [ "$mount_needed" = "true" ]; then
+        if root_dev=$(detect_root_fallback); then
+            safe_mount "/dev/$root_dev" /mnt
+            log_info "Mounting /dev/$root_dev to /mnt by device name"
+        else
+            emergency_shell "No devices with rootfs.squashfs found"
+        fi
+    fi
     
-    safe_mount "/dev/sda2" /mnt
+    # safe_mount "/dev/sda2" /mnt
 
     return 0
 }
@@ -274,7 +274,7 @@ setup_overlay() {
     fi
 
     # Create overlay filesystem
-    mount -t overlay overlay -o lowerdir=/sysroot/firmware:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root || emergency_shell "Failed to create overlay filesystem"
+    mount -t overlay overlay -o lowerdir=/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root || emergency_shell "Failed to create overlay filesystem"
 }
 
 setup_switchroot() {
@@ -338,6 +338,8 @@ main() {
     fi
 
     mkdir /mnt
+
+    sleep 2
 
     mount_device
 

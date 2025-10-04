@@ -2,9 +2,15 @@
 
 edge=0
 verbose=0
+root_uuid="$(cat ./root_uuid)"
+cmdline="root=UUID=$root_uuid"
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    -c|--cmdline)
+      shift
+      cmdline="$cmdline $1"
+      shift ;;
     -e|--edge)
       edge=1
       shift ;;
@@ -24,7 +30,6 @@ while [ $# -gt 0 ]; do
 done
 
 update_repositories() {
-  # Sorry for weird formatting
   [ "$edge" -eq 1 ] && {
     cat > /etc/apk/repositories<< EOF
 https://dl-cdn.alpinelinux.org/alpine/edge/main
@@ -78,8 +83,6 @@ EOF
 }
 
 main() {
-  root_uuid="$(cat ./root_uuid)"
-
   update_repositories
 
   install_packages
@@ -96,12 +99,10 @@ main() {
     /boot/vmlinuz-lts \
     /boot/initramfs-lts \
     --stub /usr/lib/systemd/boot/efi/linuxx64.efi.stub \
-    --cmdline "root=UUID=$root_uuid zram" \
+    --cmdline "$cmdline" \
     --output /boot/EFI/BOOT/BOOTX64.EFI
 
   passwd
-
-  # umount /boot
 }
 
 main "$@"

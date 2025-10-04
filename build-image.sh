@@ -18,6 +18,7 @@ no_device=0
 cleanup_happened=0
 verbose=0
 edge=0
+cmdline=""
 build_successful=0
 
 # Colors for log messages
@@ -57,8 +58,8 @@ cleanup() {
   
   log_debug "Running cleanup"
   
-  unmount_if_mounted "./build/$dir/boot"
-  unmount_if_mounted "./build/$dir"
+  unmount_if_mounted -R "./build/$dir/boot"
+  unmount_if_mounted -R "./build/$dir"
   
   [ -n "$efi_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$efi_uuid"
   [ -n "$root_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$root_uuid"
@@ -186,6 +187,7 @@ run_chroot() {
   _chroot_command="$command"
   [ "$edge" = "1" ] && _chroot_command="$_chroot_command --edge"
   [ "$verbose" = "1" ] && _chroot_command="$_chroot_command --verbose"
+  [ -n "$cmdline" ] && _chroot_command="$_chroot_command --cmdline $cmdline"
   
   log_debug "Chroot command: $_chroot_command"
   ../auto-chroot.sh "$dir" "$_chroot_command" || \
@@ -250,6 +252,10 @@ EOF
 parse_arguments() {
   while [ $# -gt 0 ]; do
     case "$1" in
+      -m|--cmdline)
+        shift
+        cmdline="$1"
+        shift ;;
       -i|--root-uuid)
         shift
         root_uuid="$1"
