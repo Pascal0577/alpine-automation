@@ -3,11 +3,6 @@
 # TODO: Add LVM support and Plymouth support
 # TODO: Add support for decryption via key file
 
-red="\e[0;31m"
-yellow="\e[0;33m"
-green="\e[0;32m"
-def="\e[0m"
-
 root_uuid=""
 root_dev=""
 crypt_uuid=""
@@ -16,25 +11,24 @@ mount_needed="true"
 
 use_zram="false"
 zram_size="100%"
-zram_compression="lz4"
+zram_compression="zstd"
 
 boot_type="default_boot"
 squashfs_version="upperfs.squashfs"
 
 emergency_shell() {
-    printf "%s[ERROR]%s: %s\n" "$red" "$def" "$1">&2
+    printf "[ERROR]: %s\n" "$1">&2
     echo "Dropping to emergency shell..."
-    # setsid cttyhack sh
-    setsid sh -c 'exec sh </dev/console >/dev/console 2>&1'
+    setsid sh -c 'sh </dev/console >/dev/console 2>&1'
     exit 1
 }
 
 log_info() {
-    printf "%s[INFO]%s: %s\n" "$green" "$def" "$1"
+    printf "[INFO]: %s\n" "$1"
 }
 
 log_warn() {
-    printf "%s[WARNING]%s: %s\n" "$yellow" "$def" "$1"
+    printf "[WARNING]: %s\n" "$1"
     return 1
 }
 
@@ -316,7 +310,6 @@ main() {
   
     # Wait until block devices are populated
     for i in $(seq 1 100); do
-
         for block in /sys/class/block/*; do
             [ ! -e "$block" ] && break
             dev=$(basename "$block")
@@ -328,7 +321,6 @@ main() {
                     break 2 ;;
             esac
         done
-
         sleep 0.1
     done
 
@@ -351,7 +343,7 @@ main() {
 
     log_info "BOOT TYPE IS: $boot_type"
 
-    exec switch_root /sysroot/overlay_root /sbin/init || emergency_shell "Failed to switch root. Exiting."
+    exec switch_root /sysroot/overlay_root /sbin/init
 }
 
 # Dispatch

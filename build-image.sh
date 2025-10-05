@@ -285,16 +285,16 @@ create_squashfs_images() {
   _firmware_path=$(realpath "./alpine/lib/firmware/")
   
   log_debug "Creating rootfs.squashfs"
-  mksquashfs "$dir" rootfs.squashfs -comp lz4 -e "${_firmware_path}/"* || \
+  mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_firmware_path}/"* || \
     log_error "In create_squashfs_images: Failed to create rootfs.squashfs"
   
   log_debug "Creating firmware.squashfs"
-  mksquashfs "$_firmware_path" firmware.squashfs -comp lz4 || \
+  mksquashfs "$_firmware_path" firmware.squashfs -comp zstd || \
     log_error "In create_squashfs_images: Failed to create firmware.squashfs"
   
   log_debug "Creating upperfs.squashfs"
   touch squashfs_created
-  mksquashfs squashfs_created upperfs.squashfs -comp lz4 || \
+  mksquashfs squashfs_created upperfs.squashfs -comp zstd || \
     log_error "In create_squashfs_images: Failed to create upperfs.squashfs"
 }
 
