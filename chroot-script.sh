@@ -190,10 +190,12 @@ setup_user() {
     mkdir -p /mnt || true
     mount "/dev/disk/by-uuid/$root_uuid" /mnt
     
-    mkdir -p "/mnt/$user/Documents" || true
-    chown -R "$user":"$user" "/mnt/$user/"
-    ln -s "/persist/$user/Documents" "/home/$user/Documents"
+    for dir in Documents Pictures Videos; do
+      mkdir -p "/mnt/$user/$dir" || true
+      ln -s "/persist/$user/$dir" "/home/$user/$dir"
+    done
 
+    chown -R "$user":"$user" "/mnt/$user/"
     umount -R /mnt
   else 
     log_debug "--no-device flag set. Not creating user-owned directories on disk"
