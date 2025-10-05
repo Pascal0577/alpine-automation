@@ -46,6 +46,8 @@ parse_arguments() {
         break ;;
     esac
   done
+
+  rm ./root_uuid
 }
 
 log_error() {
@@ -105,6 +107,11 @@ configure_services() {
 configure_etc() {
   log_info "Configuring /etc"
 
+  log_debug "Setting hostname"
+  printf "\n%s\n" "Enter a hostname for this device:"
+  read -r hostname
+  echo "$hostname" > /etc/hostname
+
   log_debug "Configuring interfaces"
   cat > /etc/network/interfaces << EOF
 auto lo
@@ -135,16 +142,6 @@ EOF
   echo "messagebus:x:99:messagebus" >> /etc/group
   echo "messagebus:x:99:99:messagebus user:/run/dbus:/sbin/nologin" >> /etc/passwd
 }
-
-# build_uki() {
-#   log_info "Building UKI"
-#   ukify \
-#     /boot/vmlinuz-lts \
-#     /boot/initramfs-lts \
-#     --stub /usr/lib/systemd/boot/efi/linuxx64.efi.stub \
-#     --cmdline "$cmdline" \
-#     --output /boot/EFI/BOOT/BOOTX64.EFI
-# }
 
 install_bootloader() {
   log_info "Installing bootloader"
@@ -177,6 +174,8 @@ EOF
 }
 
 setup_user() {
+  echo "permit persist :wheel" > /etc/doas.conf
+
   log_info "Creating user: $user"
   useradd "$user"
   usermod -a -G wheel "$user"
@@ -185,19 +184,20 @@ setup_user() {
   passwd "$user"
 
   mkdir -p "/home/$user" || true
-  chown -R "$user" "/home/$user"
+  chown -R "$user":"$user" "/home/$user"
 
-  [ "$no_device" = 1 ] && {
-    log_debug "--no-device flag set. Not creating user-owned directories on disk"
+  if [ "$no_device" = 0 ]; then
     mkdir -p /mnt || true
     mount "/dev/disk/by-uuid/$root_uuid" /mnt
     
-    chown -R "/mnt/$user/Documents"
     mkdir -p "/mnt/$user/Documents" || true
+    chown -R "$user":"$user" "/mnt/$user/"
     ln -s "/mnt/$user/Documents" "/home/$user/Documents"
 
     umount -R /mnt
-  }
+  else 
+    log_debug "--no-device flag set. Not creating user-owned directories on disk"
+  fi
 }
 
 main() {
@@ -212,8 +212,6 @@ main() {
   configure_services
 
   install_bootloader
-
-  # build_uki
 
   [ -n "$user" ] && setup_user
 
