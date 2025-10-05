@@ -1,12 +1,16 @@
 #!/bin/sh
 
-COMPRESSION="lz4"
+COMPRESSION="zstd"
 
 [ -n "$1" ] && COMPRESSION="$1"
 
-[ -f /persist/upperfs.squashfs ] && mv /persist/upperfs.squashfs /persist/upperfs-backup.squashfs
+[ ! -d /mnt/upperdir ] && {
+  echo "/mnt/upperdir does not exist. Not persisting changes."
+  exit 0
+}
 
-if ! mksquashfs /mnt/upperdir /persist/upperfs.squashfs -comp "$COMPRESSION" -noappend; then
-  rm /persist/upperfs.squashfs
-  mksquashfs /mnt/upperdir /persist/upperfs.squashfs -comp "$COMPRESSION" -noappend
+if mksquashfs /mnt/upperdir /persist/upperfs-tmp.squashfs -comp "$COMPRESSION" -noappend; then
+  mv /persist/upperfs.squashfs /persist/upperfs-backup.squashfs
+  mv /persist/upperfs-tmp.squashfs /persist/upperfs.squashfs
 fi
+
