@@ -294,8 +294,9 @@ create_squashfs_images() {
   
   log_debug "Creating upperfs.squashfs"
   touch /root/upperfs_created
-  mksquashfs squashfs_created upperfs.squashfs -comp zstd || \
+  mksquashfs /root/upperfs_created upperfs.squashfs -comp zstd || \
     log_error "In create_squashfs_images: Failed to create upperfs.squashfs"
+  rm /root/upperfs_created
 }
 
 deploy_to_root_device() {
