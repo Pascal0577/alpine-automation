@@ -123,7 +123,7 @@ cleanup() {
   run_umount -R "$1/sys"  || log_warn "Failed to umount $1/sys"
   run_umount -R "$1/dev"  || log_warn "Failed to umount $1/dev"
   run_umount -R "$1/run"  || log_warn "Failed to umount $1/run"
-  log_success "Cleaned up successfully."
+  log_success "auto-chroot cleaned up successfully."
 }
 
 cleanup_wrapper() {

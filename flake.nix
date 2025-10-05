@@ -17,6 +17,9 @@
         e2fsprogs
         cpio
         systemdUkify
+        binutils
+        qemu
+        OVMF
       ];
     };
   };

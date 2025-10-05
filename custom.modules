@@ -1,5 +1,5 @@
 kernel/drivers/block/loop*
-kernel/drivers/block/zram/zram8
+kernel/drivers/block/zram/zram*
 
 kernel/drivers/gpu/drm/drm*
 kernel/drivers/gpu/drm/drm_shmem_helper*

@@ -254,10 +254,10 @@ setup_overlay() {
     mkdir -p /sysroot/upper/upper /sysroot/upper/work
 
     # Mount squashfs root filesystem. This is NOT in RAM.
-    mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop
+    mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop || emergency_shell "Failed to mount rootfs.squashfs"
 
     # Mount firmware filesystem
-    mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware
+    mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware || emergency_shell "Failed to mount firmware.squashfs"
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
     if [ ! "$boot_type" = "clean_boot" ]; then
@@ -339,7 +339,7 @@ main() {
 
     mkdir /mnt
 
-    sleep 2
+    sleep 1
 
     mount_device
 

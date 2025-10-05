@@ -20,12 +20,76 @@ verbose=0
 edge=0
 cmdline=""
 build_successful=0
+user=""
 
 # Colors for log messages
 red="$(printf '\033[0;31m')"
 blue="$(printf '\033[0;34m')"
 green="$(printf '\033[0;32m')"
 white="$(printf '\033[0m')"
+
+parse_arguments() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --user)
+        shift
+        user="$1"
+        shift ;;
+      -m|--cmdline)
+        shift
+        cmdline="$1"
+        shift ;;
+      --no-device)
+        no_device=1
+        shift ;;
+      --no-cleanup)
+        cleanup_happened=1
+        shift ;;
+      --no-checksum)
+        checksum_check=0
+        shift ;;
+      -u|--url)
+        shift
+        url="$1"
+        shift ;;
+      --edge)
+        edge=1
+        shift ;;
+      -v|--verbose)
+        verbose=1
+        shift ;;
+      -h|--help)
+        print_usage
+        exit 0 ;;
+      --)
+        shift
+        break ;;
+      -*)
+        echo "Unknown option: $1" >&2
+        print_usage
+        exit 1 ;;
+      *)
+        break ;;
+    esac
+  done
+}
+
+print_usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Options:
+  -d, --no-device       Don't use a physical device (use local directory)
+  -i, --root-uuid       Specifies the UUID of the root filesystem to use
+  -c, --no-cleanup      Skip cleanup on exit
+  -k, --no-checksum     Skip checksum verification
+  -u, --url URL         Specify custom Alpine minirootfs URL
+  -e, --edge            Use Alpine edge repository
+  -v, --verbose         Enable verbose output
+  -h, --help            Show this help message
+
+EOF
+}
 
 log_error() {
   printf "%s[ERROR]%s: %s\n" "$red" "$white" "$1" >&2
@@ -49,7 +113,7 @@ unmount_if_mounted() {
   _mount_point="$1"
   if mountpoint -q "$_mount_point" 2>/dev/null; then
     log_debug "Unmounting $_mount_point"
-    umount "$_mount_point" || log_error "In unmount_if_mounted: Failed to unmount $_mount_point"
+    umount "$_mount_point" || log_debug "In unmount_if_mounted: Failed to unmount $_mount_point"
   fi
 }
 
@@ -58,8 +122,11 @@ cleanup() {
   
   log_debug "Running cleanup"
   
-  unmount_if_mounted -R "./build/$dir/boot"
-  unmount_if_mounted -R "./build/$dir"
+  log_debug "Trying to unmount $pwd/build/$dir/boot"
+  unmount_if_mounted "$pwd/build/$dir/boot" 
+
+  log_debug "Trying to unmount $pwd/build/$dir"
+  unmount_if_mounted "$pwd/build/$dir"
   
   [ -n "$efi_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$efi_uuid"
   [ -n "$root_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$root_uuid"
@@ -114,6 +181,15 @@ setup_boot_partition() {
       log_error "Failed to mount EFI partition"
   else
     log_debug "Setting up local boot directory"
+    
+    # Get root uuid from cmdline
+    for arg in $(cat "$cmdline"); do
+      case "$arg" in
+      root=UUID=*)
+        root_uuid=${arg#"root=UUID="}
+      esac
+    done
+
     echo "$root_uuid" > ./root_uuid
     mkdir -p boot "$dir/boot"
     mount --bind boot "$dir/boot" || log_error "In setup_boot_partition: Failed to bind mount boot"
@@ -170,15 +246,17 @@ copy_scripts() {
   mkdir -p "$dir/usr/share/mkinitfs/"
   mkdir -p "$dir/boot/EFI/BOOT/"
   mkdir -p "$dir/etc/mkinitfs/features.d/"
+  mkdir -p "$dir/etc/apk/commit_hooks.d/"
   
-  cp ./root_uuid "$dir/" || log_error "In copy_scripts: Failed to copy root_uuid"
-  cp ../chroot-script.sh "$dir/bin/" || log_error "In copy_scripts: Failed to copy chroot-script.sh"
-  cp ../squash-upperdir "$dir/bin/" || log_error "In copy_scripts: Failed to copy squash-upperdir"
-  cp ../squashdir "$dir/etc/init.d/" || log_error "In copy_scripts: Failed to copy squashdir"
-  cp ../init.sh "$dir/usr/share/mkinitfs/initramfs-init" || log_error "In copy_scripts: Failed to copy initramfs-init"
-  cp ../init.sh "$dir/usr/share/mkinitfs/init.sh" || log_error "In copy_scripts: Failed to copy init.sh"
-  cp ../custom.files "$dir/etc/mkinitfs/features.d/" || log_error "In copy_scripts: Failed to copy custom.files"
-  cp ../custom.modules "$dir/etc/mkinitfs/features.d/" || log_error "In copy_scripts: Failed to copy custom.modules"
+  cp ./root_uuid "$dir/"                                       || log_error "In copy_scripts: Failed to copy root_uuid"
+  cp ../chroot-script.sh "$dir/bin/"                           || log_error "In copy_scripts: Failed to copy chroot-script.sh"
+  cp ../squash-upperdir "$dir/bin/"                            || log_error "In copy_scripts: Failed to copy squash-upperdir"
+  cp ../squashdir "$dir/etc/init.d/"                           || log_error "In copy_scripts: Failed to copy squashdir"
+  cp ../init.sh "$dir/usr/share/mkinitfs/initramfs-init"       || log_error "In copy_scripts: Failed to copy initramfs-init"
+  cp ../init.sh "$dir/usr/share/mkinitfs/init.sh"              || log_error "In copy_scripts: Failed to copy init.sh"
+  cp ../custom.files "$dir/etc/mkinitfs/features.d/"           || log_error "In copy_scripts: Failed to copy custom.files"
+  cp ../custom.modules "$dir/etc/mkinitfs/features.d/"         || log_error "In copy_scripts: Failed to copy custom.modules"
+  cp ../mkinitfs_commit_hook.sh "$dir/etc/apk/commit_hooks.d/" || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
 }
 
 run_chroot() {
@@ -188,6 +266,8 @@ run_chroot() {
   [ "$edge" = "1" ] && _chroot_command="$_chroot_command --edge"
   [ "$verbose" = "1" ] && _chroot_command="$_chroot_command --verbose"
   [ -n "$cmdline" ] && _chroot_command="$_chroot_command --cmdline $cmdline"
+  [ -n "$user" ] && _chroot_command="$_chroot_command --user $user"
+  [ "$no_device" = 1 ] && _chroot_command="$_chroot_command --no-device"
   
   log_debug "Chroot command: $_chroot_command"
   ../auto-chroot.sh "$dir" "$_chroot_command" || \
@@ -232,71 +312,9 @@ deploy_to_root_device() {
     log_error "In deploy_to_root_device: Failed to unmount root device"
 }
 
-print_usage() {
-  cat << EOF
-Usage: $0 [OPTIONS]
-
-Options:
-  -d, --no-device       Don't use a physical device (use local directory)
-  -i, --root-uuid       Specifies the UUID of the root filesystem to use
-  -c, --no-cleanup      Skip cleanup on exit
-  -k, --no-checksum     Skip checksum verification
-  -u, --url URL         Specify custom Alpine minirootfs URL
-  -e, --edge            Use Alpine edge repository
-  -v, --verbose         Enable verbose output
-  -h, --help            Show this help message
-
-EOF
-}
-
-parse_arguments() {
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -m|--cmdline)
-        shift
-        cmdline="$1"
-        shift ;;
-      -i|--root-uuid)
-        shift
-        root_uuid="$1"
-        shift ;;
-      -d|--no-device)
-        no_device=1
-        shift ;;
-      -c|--no-cleanup)
-        cleanup_happened=1
-        shift ;;
-      -k|--no-checksum)
-        checksum_check=0
-        shift ;;
-      -u|--url)
-        shift
-        url="$1"
-        shift ;;
-      -e|--edge)
-        edge=1
-        shift ;;
-      -v|--verbose)
-        verbose=1
-        shift ;;
-      -h|--help)
-        print_usage
-        exit 0 ;;
-      --)
-        shift
-        break ;;
-      -*)
-        echo "Unknown option: $1" >&2
-        print_usage
-        exit 1 ;;
-      *)
-        break ;;
-    esac
-  done
-}
-
 main() {
-  trap cleanup EXIT INT TERM
+  trap 'cleanup; exit 1' INT TERM
+  trap cleanup EXIT
   
   [ "$(id -u)" != 0 ] && log_error "In main: Please run as root."
   validate_dependencies
