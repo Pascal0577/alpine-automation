@@ -80,9 +80,15 @@ EOF
 
 install_packages() {
   log_debug "Installing base packages"
-  apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login linux-pam systemd-efistub ukify squashfs-tools \
+  apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login linux-pam squashfs-tools \
     || log_error "in install_packages: failed to install critical packages"
   setup-wayland-base || log_error "in install_packages: failed to install critical packages"
+
+  # The grub trigger will fail due to lack of device being mounted at /
+  # This is expected behavior. Grub is configured manually later
+  # We let it fail gracefully here
+  apk add grub-efi efibootmgr
+  log_info "The grub trigger is expected to fail here" | grep -v "grub.*trigger: exited with error" || true
 
   [ -n "$user" ] && apk add doas
 }
@@ -108,6 +114,7 @@ iface wlan0 inet dhcp
 EOF
 
   log_debug "Configuring PAM"
+  mkdir -p /etc/pam.d/
   cat > /etc/pam.d/login << EOF
 auth       required     pam_securetty.so
 auth       required     pam_unix.so
@@ -125,18 +132,48 @@ EOF
 
   # See this bug:
   # https://web.archive.org/web/20251002224414/https://lists.alpinelinux.org/~alpine/users/%3C61b39753.1c69fb81.d43fe.c2b9%40mx.google.com%3E
-  echo "messagebus:x:104:messagebus" >> /etc/group
+  echo "messagebus:x:99:messagebus" >> /etc/group
   echo "messagebus:x:99:99:messagebus user:/run/dbus:/sbin/nologin" >> /etc/passwd
 }
 
-build_uki() {
-  log_info "Building UKI"
-  ukify \
-    /boot/vmlinuz-lts \
-    /boot/initramfs-lts \
-    --stub /usr/lib/systemd/boot/efi/linuxx64.efi.stub \
-    --cmdline "$cmdline" \
-    --output /boot/EFI/BOOT/BOOTX64.EFI
+# build_uki() {
+#   log_info "Building UKI"
+#   ukify \
+#     /boot/vmlinuz-lts \
+#     /boot/initramfs-lts \
+#     --stub /usr/lib/systemd/boot/efi/linuxx64.efi.stub \
+#     --cmdline "$cmdline" \
+#     --output /boot/EFI/BOOT/BOOTX64.EFI
+# }
+
+install_bootloader() {
+  log_info "Installing bootloader"
+  grub-install \
+    --target=x86_64-efi \
+    --efi-directory=/boot \
+    --bootloader-id=BOOT \
+    --removable || log_error "In install_bootloader: grub-install failed"
+
+  log_debug "Creating grub configuration at /boot/grub/grub.cfg"
+  cat > /boot/grub/grub.cfg << EOF
+set timeout=10
+set default=0
+
+menuentry "Alpine Linux (Default)" {
+    linux /vmlinuz-lts $cmdline boot_type=default_boot
+    initrd /initramfs-lts
+}
+
+menuentry "Alpine Linux (Backup)" {
+    linux /vmlinuz-lts $cmdline boot_type=backup_boot
+    initrd /initramfs-lts
+}
+
+menuentry "Alpine Linux (Clean Boot)" {
+    linux /vmlinuz-lts $cmdline boot_type=clean_boot
+    initrd /initramfs-lts
+}
+EOF
 }
 
 setup_user() {
@@ -174,7 +211,9 @@ main() {
 
   configure_services
 
-  build_uki
+  install_bootloader
+
+  # build_uki
 
   [ -n "$user" ] && setup_user
 

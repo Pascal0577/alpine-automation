@@ -298,6 +298,11 @@ create_squashfs_images() {
     log_error "In create_squashfs_images: Failed to create upperfs.squashfs"
 }
 
+# install_grub() {
+#   mkdir -p grub-install
+
+# }
+
 deploy_to_root_device() {
   log_info "Deploying images to root device"
   
@@ -343,6 +348,9 @@ main() {
   copy_scripts
   run_chroot
   create_squashfs_images
+
+  # install_grub
+
   [ "$no_device" != 1 ] && deploy_to_root_device
 
   build_successful=1
