@@ -192,7 +192,7 @@ setup_user() {
     
     mkdir -p "/mnt/$user/Documents" || true
     chown -R "$user":"$user" "/mnt/$user/"
-    ln -s "/mnt/$user/Documents" "/home/$user/Documents"
+    ln -s "/persist/$user/Documents" "/home/$user/Documents"
 
     umount -R /mnt
   else 
