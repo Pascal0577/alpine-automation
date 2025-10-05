@@ -216,8 +216,6 @@ mount_device() {
             emergency_shell "No devices with rootfs.squashfs found"
         fi
     fi
-    
-    # safe_mount "/dev/sda2" /mnt
 
     return 0
 }

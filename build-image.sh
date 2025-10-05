@@ -296,6 +296,8 @@ create_squashfs_images() {
   touch /root/upperfs_created
   mksquashfs /root/upperfs_created upperfs.squashfs -comp zstd || \
     log_error "In create_squashfs_images: Failed to create upperfs.squashfs"
+  mksquashfs /root/upperfs_created upperfs-backup.squashfs -comp zstd || \
+    log_error "In create_squashfs_images: Failed to create upperfs-backup.squashfs"
   rm /root/upperfs_created
 }
 
@@ -308,6 +310,7 @@ deploy_to_root_device() {
   cp ./firmware.squashfs "$dir/" && rm ./firmware.squashfs
   cp ./rootfs.squashfs "$dir/" && rm ./rootfs.squashfs
   cp ./upperfs.squashfs "$dir/" && rm ./upperfs.squashfs
+  cp ./upperfs-backup.squashfs "$dir/" && rm ./upperfs-backup.squashfs
   
   umount "/dev/disk/by-uuid/$root_uuid" || \
     log_error "In deploy_to_root_device: Failed to unmount root device"
