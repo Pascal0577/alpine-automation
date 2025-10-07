@@ -102,13 +102,19 @@ configure_services() {
   rc-update add squashdir shutdown || log_error "In configure_services: Failed to add critical service"
   rc-update del dbus sysinit
   rc-update add dbus default       || log_error "In configure_services: Failed to add critical service"
+  rc-update add cgroups sysinit    || log_error "In configure_services: Failed to add critical service"
+  rc-update add devfs sysinit      || log_error "In configure_services: Failed to add critical service"
+  rc-update add hostname boot      || log_error "In configure_services: Failed to add critical service"
+  rc-update add sysctl boot        || log_error "In configure_services: Failed to add critical service"
+  rc-update add bootmisc boot      || log_error "In configure_services: Failed to add critical service"
+  rc-update add modules boot       || log_error "In configure_services: Failed to add critical service"
 }
 
 configure_etc() {
   log_info "Configuring /etc"
 
   log_debug "Setting hostname"
-  printf "\n%s\n" "Enter a hostname for this device:"
+  printf "\n%s" "Enter a hostname for this device: "
   read -r hostname
   echo "$hostname" > /etc/hostname
 
@@ -118,6 +124,9 @@ auto lo
 
 auto wlan0
 iface wlan0 inet dhcp
+
+auto eth0
+iface eth0 inet dhcp
 EOF
 
   log_debug "Configuring PAM"

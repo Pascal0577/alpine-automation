@@ -109,7 +109,6 @@ load_modules() {
 
     # Load necessary kernel modules. Don't judge me for how I did this
     modprobe loop
-    modprobe simpledrm
     modprobe sd_mod
     modprobe ehci_hcd
     modprobe xhci_hcd
@@ -140,7 +139,7 @@ setup_zram() {
         if [ ! -b /dev/zram0 ]; then
             log_warn "zram device not available, attempting to load zram module..."
             modprobe zram 2>/dev/null || {
-                log_warn "Failed to set up zram device. Falling back to tmpfs"
+                log_warn "Failed to modprobe zram. Falling back to tmpfs"
                 return 1
             }
         fi
