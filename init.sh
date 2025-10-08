@@ -19,8 +19,8 @@ squashfs_version="upperfs.squashfs"
 emergency_shell() {
     printf "[ERROR]: %s\n" "$1">&2
     echo "Dropping to emergency shell..."
-    setsid sh -c 'sh </dev/console >/dev/console 2>&1'
-    exit 1
+    setsid sh -c 'sh -i </dev/console >/dev/console 2>&1'
+    exit 0
 }
 
 log_info() {
