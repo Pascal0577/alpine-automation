@@ -1,12 +1,6 @@
 kernel/drivers/block/loop*
 kernel/drivers/block/zram/zram*
 
-kernel/drivers/gpu/drm/drm*
-kernel/drivers/gpu/drm/drm_shmem_helper*
-kernel/drivers/gpu/drm/drm_kms_helper*
-kernel/drivers/gpu/drm/clients/drm_client_lib*
-kernel/drivers/gpu/drm/tiny/simpledrm*
-
 kernel/drivers/hid/hid*
 kernel/drivers/hid/usbhid/usbhid*
 
