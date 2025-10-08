@@ -82,7 +82,7 @@ EOF
 
 install_packages() {
   log_debug "Installing base packages"
-  apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login linux-pam squashfs-tools \
+  apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login linux-pam squashfs-tools e2fsprogs \
     || log_error "in install_packages: failed to install critical packages"
   setup-wayland-base || log_error "in install_packages: failed to install critical packages"
 

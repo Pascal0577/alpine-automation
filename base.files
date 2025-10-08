@@ -1,6 +1,8 @@
 /bin/sh
 /bin/busybox
 /sbin/modprobe
+/sbin/mkfs.ext4
+/sbin/mke2fs
 /lib/mdev
 /etc/modprobe.d/*.conf
 /etc/mdev.conf
