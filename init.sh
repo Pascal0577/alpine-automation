@@ -42,7 +42,7 @@ safe_mount() {
 }
 
 parse_cmdline() {
-  # Read the root UUID from /proc/cmdline
+    # Read the root UUID from /proc/cmdline
     for arg in $(cat /proc/cmdline); do
         case "$arg" in
             root=UUID=*)
@@ -82,18 +82,18 @@ detect_root_fallback() {
             loop*|ram*)
                 continue ;;
         esac
- 
+
         if ! mount "/dev/$device" /mnt 2>/dev/null; then
             log_warn "Could not mount $device. Skipping."
             continue
         fi
-    
+
         if [ -f /mnt/rootfs.squashfs ]; then
             umount /mnt
             echo "$device"
             return 0
         fi
-    
+
         umount /mnt
     done
     return 1
@@ -149,7 +149,8 @@ setup_zram() {
 
         # Set compression algorithm
         if [ -w /sys/block/zram0/comp_algorithm ]; then
-            echo "$zram_compression" > /sys/block/zram0/comp_algorithm 2>/dev/null || log_warn "Failed to set zram compression to $zram_compression, using default"
+            echo "$zram_compression" > /sys/block/zram0/comp_algorithm 2>/dev/null \
+              || log_warn "Failed to set zram compression to $zram_compression, using default"
         fi
 
         # Set device size
@@ -185,7 +186,8 @@ open_encrypted_filesystem() {
 mount_device() {
     # Try to decrypt the filesystem if needed
     if [ -n "$crypt_uuid" ]; then
-        open_encrypted_filesystem "$crypt_uuid" "$crypt_name" || emergency_shell "Failed to open encrypted filesystem. Exiting."
+        open_encrypted_filesystem "$crypt_uuid" "$crypt_name" \
+          || emergency_shell "Failed to open encrypted filesystem. Exiting."
     fi
 
     # Attempt to mount filesystem based off UUID
@@ -230,19 +232,23 @@ setup_overlay() {
     mkdir -p /sysroot/upper/upper /sysroot/upper/work
 
     # Mount squashfs root filesystem. This is NOT in RAM.
-    mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop || emergency_shell "Failed to mount rootfs.squashfs"
+    mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop \
+      || emergency_shell "Failed to mount rootfs.squashfs"
 
     # Mount firmware filesystem
-    mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware || emergency_shell "Failed to mount firmware.squashfs"
+    mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware \
+      || emergency_shell "Failed to mount firmware.squashfs"
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
     if [ ! "$boot_type" = "clean_boot" ]; then
         if [ -f /mnt/$squashfs_version ]; then
-            unsquashfs -f -d /sysroot/upper/upper /mnt/$squashfs_version || emergency_shell "Failed to unsquash $squashfs_version"
+            unsquashfs -f -d /sysroot/upper/upper /mnt/$squashfs_version \
+              || emergency_shell "Failed to unsquash $squashfs_version"
         elif [ -f /mnt/upperfs-backup.squashfs ]; then  # Try backup boot if we can't default boot
             log_warn "/mnt/$squashfs_version not found. Trying backup."
             boot_type="backup_boot"
-            unsquashfs -f -d /sysroot/upper/upper /mnt/upperfs-backup.squashfs || emergency_shell "Failed to unsquash upperfs-backup.squashfs"
+            unsquashfs -f -d /sysroot/upper/upper /mnt/upperfs-backup.squashfs \
+              || emergency_shell "Failed to unsquash upperfs-backup.squashfs"
         else  # Fallback to clean boot if we can't backup boot
             log_warn "Backup not found. Starting clean boot."
             boot_type="clean_boot"
@@ -250,7 +256,8 @@ setup_overlay() {
     fi
 
     # Create overlay filesystem
-    mount -t overlay overlay -o lowerdir=/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root || emergency_shell "Failed to create overlay filesystem"
+    mount -t overlay overlay -o lowerdir=/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
+      || emergency_shell "Failed to create overlay filesystem"
 }
 
 setup_switchroot() {
