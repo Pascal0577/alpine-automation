@@ -121,7 +121,7 @@ configure_services() {
 configure_etc() {
     log_info "Configuring /etc"
 
-    [ -n "$hostname" ] && {
+    [ -z "$hostname" ] && {
         log_debug "Setting hostname"
         printf "\n%s" "Enter a hostname for this device: "
         read -r hostname
