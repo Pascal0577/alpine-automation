@@ -14,6 +14,20 @@ blue="$(printf '\033[0;34m')"
 green="$(printf '\033[0;32m')"
 white="$(printf '\033[0m')"
 
+log_error() {
+    printf "%s[ERROR]%s: %s\n" "$red" "$white" "$1" >&2
+    exit 1
+}
+
+log_info() {
+    printf "%s[INFO]%s: %s\n" "$green" "$white" "$1"
+}
+
+log_debug() {
+    [ "$verbose" = "1" ] && printf "%s[DEBUG]%s: %s\n" "$blue" "$white" "$1"
+    return 0
+}
+
 parse_arguments() {
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -55,18 +69,51 @@ parse_arguments() {
     rm ./root_uuid
 }
 
-log_error() {
-    printf "%s[ERROR]%s: %s\n" "$red" "$white" "$1" >&2
-    exit 1
-}
+configure_etc() {
+    log_info "Configuring /etc"
 
-log_info() {
-    printf "%s[INFO]%s: %s\n" "$green" "$white" "$1"
-}
+    if [ -n "$hostname" ]; then 
+        echo "$hostname" > /etc/hostname
+    else
+        log_debug "Setting hostname"
+        printf "\n%s" "Enter a hostname for this device: "
+        read -r hostname
+        echo "$hostname" > /etc/hostname
+    fi
+    
 
-log_debug() {
-    [ "$verbose" = "1" ] && printf "%s[DEBUG]%s: %s\n" "$blue" "$white" "$1"
-    return 0
+    log_debug "Configuring interfaces"
+    cat > /etc/network/interfaces << EOF
+auto lo
+
+auto wlan0
+iface wlan0 inet dhcp
+
+auto eth0
+iface eth0 inet dhcp
+EOF
+
+    log_debug "Configuring PAM"
+    mkdir -p /etc/pam.d/
+    cat > /etc/pam.d/login << EOF
+auth       required     pam_securetty.so
+auth       required     pam_unix.so
+account    required     pam_unix.so
+session    required     pam_unix.so
+session    required     pam_env.so
+session    required     pam_elogind.so
+EOF
+
+    log_debug "Using agetty instead of getty"
+    sed -i 's|/sbin/getty|/sbin/agetty|g' /etc/inittab
+  
+    log_debug "Configuring mkinitfs"
+    echo 'features="base ext4"' > /etc/mkinitfs/mkinitfs.conf
+
+    # See this bug:
+    # https://web.archive.org/web/20251002224414/https://lists.alpinelinux.org/~alpine/users/%3C61b39753.1c69fb81.d43fe.c2b9%40mx.google.com%3E
+    echo "messagebus:x:99:messagebus" >> /etc/group
+    echo "messagebus:x:99:99:messagebus user:/run/dbus:/sbin/nologin" >> /etc/passwd
 }
 
 update_repositories() {
@@ -118,49 +165,6 @@ configure_services() {
     rc-update add modules boot           || log_error "In configure_services: Failed to add critical service"
 }
 
-configure_etc() {
-    log_info "Configuring /etc"
-
-    [ -z "$hostname" ] && {
-        log_debug "Setting hostname"
-        printf "\n%s" "Enter a hostname for this device: "
-        read -r hostname
-        echo "$hostname" > /etc/hostname
-    }
-
-    log_debug "Configuring interfaces"
-    cat > /etc/network/interfaces << EOF
-auto lo
-
-auto wlan0
-iface wlan0 inet dhcp
-
-auto eth0
-iface eth0 inet dhcp
-EOF
-
-    log_debug "Configuring PAM"
-    mkdir -p /etc/pam.d/
-    cat > /etc/pam.d/login << EOF
-auth       required     pam_securetty.so
-auth       required     pam_unix.so
-account    required     pam_unix.so
-session    required     pam_unix.so
-session    required     pam_env.so
-session    required     pam_elogind.so
-EOF
-
-    log_debug "Using agetty instead of getty"
-    sed -i 's|/sbin/getty|/sbin/agetty|g' /etc/inittab
-  
-    log_debug "Configuring mkinitfs"
-    echo 'features="base ext4"' > /etc/mkinitfs/mkinitfs.conf
-
-    # See this bug:
-    # https://web.archive.org/web/20251002224414/https://lists.alpinelinux.org/~alpine/users/%3C61b39753.1c69fb81.d43fe.c2b9%40mx.google.com%3E
-    echo "messagebus:x:99:messagebus" >> /etc/group
-    echo "messagebus:x:99:99:messagebus user:/run/dbus:/sbin/nologin" >> /etc/passwd
-}
 
 install_bootloader() {
     log_info "Installing bootloader"
