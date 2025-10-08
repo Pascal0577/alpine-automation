@@ -16,14 +16,13 @@ kernel/drivers/scsi/sd_mod*
 
 kernel/drivers/usb/common/usb-common*
 kernel/drivers/usb/core/usbcore*
-kernel/drivers/usb/xhci-hcd*
-kernel/drivers/usb/xhci-hcd*
-kernel/drivers/usb/xhci-pci-renesas*
-kernel/drivers/usb/xhci-pci*
-kernel/drivers/usb/xhci-plat-hcd*
-kernel/drivers/usb/storage/usb_storage*
+kernel/drivers/usb/host/ehci-hcd*
+kernel/drivers/usb/host/xhci-hcd*
+kernel/drivers/usb/host/xhci-pci-renesas*
+kernel/drivers/usb/host/xhci-pci*
+kernel/drivers/usb/host/xhci-plat-hcd*
+kernel/drivers/usb/storage/usb-storage*
 
-kernel/fs/ext4/ext4*
 kernel/fs/fat/fat*
 kernel/fs/fat/vfat*
 kernel/fs/fat/msdos*
@@ -35,4 +34,4 @@ kernel/fs/mbcache*
 
 kernel/lib/lz4_compress*
 kernel/lib/lz4hc_compress*
-kernel/libcrc16*
+kernel/lib/crc16*

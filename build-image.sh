@@ -254,8 +254,8 @@ copy_scripts() {
   cp ../squashdir "$dir/etc/init.d/"                           || log_error "In copy_scripts: Failed to copy squashdir"
   cp ../init.sh "$dir/usr/share/mkinitfs/initramfs-init"       || log_error "In copy_scripts: Failed to copy initramfs-init"
   cp ../init.sh "$dir/usr/share/mkinitfs/init.sh"              || log_error "In copy_scripts: Failed to copy init.sh"
-  cp ../custom.files "$dir/etc/mkinitfs/features.d/"           || log_error "In copy_scripts: Failed to copy custom.files"
-  cp ../custom.modules "$dir/etc/mkinitfs/features.d/"         || log_error "In copy_scripts: Failed to copy custom.modules"
+  cp ../base.files "$dir/etc/mkinitfs/features.d/"           || log_error "In copy_scripts: Failed to copy custom.files"
+  cp ../base.modules "$dir/etc/mkinitfs/features.d/"         || log_error "In copy_scripts: Failed to copy custom.modules"
   cp ../mkinitfs_commit_hook.sh "$dir/etc/apk/commit_hooks.d/" || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
 }
 

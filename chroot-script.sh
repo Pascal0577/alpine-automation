@@ -144,7 +144,7 @@ EOF
   sed -i 's|/sbin/getty|/sbin/agetty|g' /etc/inittab
   
   log_debug "Configuring mkinitfs"
-  echo 'features="base ext4 keymap kms scsi usb zram squashfs custom"' > /etc/mkinitfs/mkinitfs.conf
+  echo 'features="base ext4"' > /etc/mkinitfs/mkinitfs.conf
 
   # See this bug:
   # https://web.archive.org/web/20251002224414/https://lists.alpinelinux.org/~alpine/users/%3C61b39753.1c69fb81.d43fe.c2b9%40mx.google.com%3E
