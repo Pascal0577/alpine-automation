@@ -5,6 +5,7 @@ verbose=0
 root_uuid="$(cat ./root_uuid)"
 cmdline="root=UUID=$root_uuid"
 user=""
+hostname=""
 no_device=0
 
 # Colors for log messages
@@ -16,6 +17,10 @@ white="$(printf '\033[0m')"
 parse_arguments() {
     while [ $# -gt 0 ]; do
         case "$1" in
+            --hostname)
+                shift
+                hostname="$1"
+                shift ;;
             --no-device)
                 no_device=1
                 shift ;;
@@ -116,10 +121,12 @@ configure_services() {
 configure_etc() {
     log_info "Configuring /etc"
 
-    log_debug "Setting hostname"
-    printf "\n%s" "Enter a hostname for this device: "
-    read -r hostname
-    echo "$hostname" > /etc/hostname
+    [ -n "$hostname" ] && {
+        log_debug "Setting hostname"
+        printf "\n%s" "Enter a hostname for this device: "
+        read -r hostname
+        echo "$hostname" > /etc/hostname
+    }
 
     log_debug "Configuring interfaces"
     cat > /etc/network/interfaces << EOF

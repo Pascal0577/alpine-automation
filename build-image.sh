@@ -21,6 +21,7 @@ edge=0
 cmdline=""
 build_successful=0
 user=""
+hostname=""
 
 # Colors for log messages
 red="$(printf '\033[0;31m')"
@@ -31,11 +32,15 @@ white="$(printf '\033[0m')"
 parse_arguments() {
     while [ $# -gt 0 ]; do
         case "$1" in
+            --hostname)
+                shift
+                hostname="$1"
+                shift ;;
             --user)
                 shift
                 user="$1"
                 shift ;;
-            -m|--cmdline)
+            --cmdline)
                 shift
                 cmdline="$1"
                 shift ;;
@@ -79,14 +84,16 @@ print_usage() {
 Usage: $0 [OPTIONS]
 
 Options:
-  -d, --no-device       Don't use a physical device (use local directory)
-  -i, --root-uuid       Specifies the UUID of the root filesystem to use
-  -c, --no-cleanup      Skip cleanup on exit
-  -k, --no-checksum     Skip checksum verification
-  -u, --url URL         Specify custom Alpine minirootfs URL
-  -e, --edge            Use Alpine edge repository
-  -v, --verbose         Enable verbose output
-  -h, --help            Show this help message
+    --hostname HOSTNAME    The hostname of the installation
+    --user USER            Adds a non-root user to the installtion
+    --cmdline CMDLINE      The default kernel command line. System will still be bootable if empty
+    --no-device            Don't use a physical device (installs images to build directory)
+    --no-cleanup           Skip cleanup on exit
+    --no-checksum          Skip checksum verification
+    -u, --url URL          Specify custom Alpine minirootfs URL
+    -e, --edge             Use Alpine edge repository
+    -v, --verbose          Enable verbose output
+    -h, --help             Show this help message
 
 EOF
 }
@@ -265,9 +272,10 @@ run_chroot() {
     _chroot_command="$command"
     [ "$edge" = "1" ] && _chroot_command="$_chroot_command --edge"
     [ "$verbose" = "1" ] && _chroot_command="$_chroot_command --verbose"
+    [ "$no_device" = 1 ] && _chroot_command="$_chroot_command --no-device"
     [ -n "$cmdline" ] && _chroot_command="$_chroot_command --cmdline $cmdline"
     [ -n "$user" ] && _chroot_command="$_chroot_command --user $user"
-    [ "$no_device" = 1 ] && _chroot_command="$_chroot_command --no-device"
+    [ -n "$hostname" ] && _chroot_command="$_chroot_command --hostname $hostname"
 
     log_debug "Chroot command: $_chroot_command"
     ../auto-chroot.sh "$dir" "$_chroot_command" || \
