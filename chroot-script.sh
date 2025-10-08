@@ -82,9 +82,10 @@ EOF
 
 install_packages() {
   log_debug "Installing base packages"
-  apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login linux-pam squashfs-tools e2fsprogs \
+  apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login \
+    linux-pam squashfs-tools e2fsprogs eudev udev-init-scripts udev-init-scripts-openrc elogind polkit-elogind \
     || log_error "in install_packages: failed to install critical packages"
-  setup-wayland-base || log_error "in install_packages: failed to install critical packages"
+  # setup-wayland-base || log_error "in install_packages: failed to install critical packages"
 
   # The grub trigger will fail due to lack of device being mounted at /
   # This is expected behavior. Grub is configured manually later
@@ -100,8 +101,11 @@ configure_services() {
   rc-update add hwdrivers boot     || log_error "In configure_services: Failed to add critical service"
   rc-update add elogind default    || log_error "In configure_services: Failed to add critical service"
   rc-update add squashdir shutdown || log_error "In configure_services: Failed to add critical service"
-  rc-update del dbus sysinit
   rc-update add dbus default       || log_error "In configure_services: Failed to add critical service"
+  rc-update add udev sysinit
+  rc-update add udev-trigger sysinit
+  rc-update add udev-settle sysinit
+  rc-update add udev-postmount default
   rc-update add cgroups sysinit    || log_error "In configure_services: Failed to add critical service"
   rc-update add devfs sysinit      || log_error "In configure_services: Failed to add critical service"
   rc-update add hostname boot      || log_error "In configure_services: Failed to add critical service"

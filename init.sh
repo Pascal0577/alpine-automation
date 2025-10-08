@@ -104,46 +104,34 @@ load_modules() {
     echo "/sbin/mdev" > /proc/sys/kernel/hotplug
     mdev -s
 
-    # Mystical, Magical, Nonsensical
-    find /sys/ -name modalias -print0 | xargs -0 sort -u -z | xargs -0 modprobe -abq
-
-    # Load necessary kernel modules. Don't judge me for how I did this
-    modprobe loop
-    modprobe sd_mod
-    modprobe ehci_hcd
-    modprobe xhci_hcd
-    modprobe xhci_pci
-    modprobe usbhid
-    modprobe usb-storage
-    modprobe vfat
-    modprobe nls_cp437
-    modprobe overlay
-    modprobe squashfs
-    modprobe ext4
-    modprobe mbcache
-    modprobe jbd2
+    # Load necessary kernel modules
+    modprobe loop &
+    modprobe sd_mod &
+    modprobe ehci_hcd &
+    modprobe xhci_hcd &
+    modprobe xhci_pci &
+    modprobe usbhid &
+    modprobe usb-storage &
+    modprobe vfat &
+    modprobe nls_cp437 &
+    modprobe overlay &
+    modprobe squashfs &
+    modprobe ext4 & 
+    modprobe mbcache &
+    modprobe jbd2 &
 
     # Load zram module if needed
-    [ "$use_zram" = "true" ] && modprobe zram
+    [ "$use_zram" = "true" ] && modprobe zram &
 
     # Load kernel modules for decryption if needed
-    [ -n "$crypt_uuid" ] && modprobe dm-crypt
+    [ -n "$crypt_uuid" ] && modprobe dm-crypt &
 }
 
 # Setup zram block device for overlay upper directory
 setup_zram() {
     if [ "$use_zram" = "true" ]; then
         log_info "Setting up zram for overlay upper directory..."
-    
-        # Check if zram device exists
-        if [ ! -b /dev/zram0 ]; then
-            log_warn "zram device not available, attempting to load zram module..."
-            modprobe zram 2>/dev/null || {
-                log_warn "Failed to modprobe zram. Falling back to tmpfs"
-                return 1
-            }
-        fi
-    
+
         # Calculate zram size based on configuration
         case "$zram_size" in
             *%)
@@ -158,18 +146,18 @@ setup_zram() {
                 zram_size=$((${zram_size%[Gg]} * 1024 * 1024)) ;;
             *) :;;
         esac
-    
+
         # Set compression algorithm
         if [ -w /sys/block/zram0/comp_algorithm ]; then
             echo "$zram_compression" > /sys/block/zram0/comp_algorithm 2>/dev/null || log_warn "Failed to set zram compression to $zram_compression, using default"
         fi
-    
+
         # Set device size
         echo "${zram_size}K" > /sys/block/zram0/disksize || {
             log_warn "Failed to set zram size, falling back to tmpfs"
             return 1
         }
-    
+
         # Create filesystem on zram device
         if mkfs.ext4 /dev/zram0 2>/dev/null; then
             log_info "Created ext4 filesystem on zram device (${zram_size}K)"
@@ -203,20 +191,17 @@ mount_device() {
     # Attempt to mount filesystem based off UUID
     if mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null; then
         log_info "Mounting filesystem by UUID"
-        mount_needed=false
+        return 0
     fi
 
     # Fallback if mounting via UUID is unavailable for whatever reason
-    if [ "$mount_needed" = "true" ]; then
-        if root_dev=$(detect_root_fallback); then
-            safe_mount "/dev/$root_dev" /mnt
-            log_info "Mounting /dev/$root_dev to /mnt by device name"
-        else
-            emergency_shell "No devices with rootfs.squashfs found"
-        fi
+    if root_dev=$(detect_root_fallback); then
+        log_info "Mounting /dev/$root_dev to /mnt by device name"
+        safe_mount "/dev/$root_dev" /mnt
+        return 0
+    else
+        emergency_shell "No devices with rootfs.squashfs found"
     fi
-
-    return 0
 }
 
 set_squashfs_version() {
@@ -294,6 +279,32 @@ setup_switchroot() {
     fi
 }
 
+wait_for_devices() {
+  # Wait until block devices are populated
+  mkdir -p /dev/disk/by-uuid/ || true
+  for i in $(seq 1 200); do
+      for uuid in /dev/disk/by-uuid/*; do
+        [ -e "$uuid" ] && {
+          found=1
+          break 2
+        }
+      done
+      sleep 0.05
+  done
+
+  # If nothing was found after time limit then drop to shell
+  if [ ! "$found" = "1" ]; then
+      emergency_shell "No filesystems detected."
+  fi
+
+  # udev can possibly be used, though I think mdev is better here.
+  # udevd --daemon --resolve-names=never
+  # udevadm trigger --type=subsystems --action=add
+  # udevadm settle
+  # udevadm trigger --type=devices --action=add
+  # udevadm settle --timeout=30
+}
+
 main() {
     /bin/busybox --install -s 
 
@@ -302,33 +313,12 @@ main() {
     mount -t devtmpfs none /dev
 
     parse_cmdline
-
+    
     load_modules
-  
-    # Wait until block devices are populated
-    for i in $(seq 1 100); do
-        for block in /sys/class/block/*; do
-            [ ! -e "$block" ] && break
-            dev=$(basename "$block")
 
-            case "$dev" in
-                sd*|nvme*|mmc*|vd*)
-                    found=true
-                    log_info "Found block devices"
-                    break 2 ;;
-            esac
-        done
-        sleep 0.1
-    done
-
-    # If nothing was found after time limit then drop to shell
-    if [ ! "$found" = "true" ]; then
-        emergency_shell "No filesystems detected."
-    fi
+    wait_for_devices
 
     mkdir /mnt
-
-    sleep 1
 
     mount_device
 
