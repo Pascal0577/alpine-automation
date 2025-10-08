@@ -328,9 +328,9 @@ main() {
     trap 'cleanup; exit 1' INT TERM
     trap cleanup EXIT
 
+    parse_arguments "$@"
     [ "$(id -u)" != 0 ] && log_error "In main: Please run as root."
     validate_dependencies
-    parse_arguments "$@"
 
     pwd="$PWD"
 
