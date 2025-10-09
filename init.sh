@@ -218,7 +218,7 @@ set_squashfs_version() {
 }
 
 setup_overlay() {
-    mkdir -p /sysroot/upper/upper /sysroot/upper/work /sysroot/rootfs /sysroot/overlay_root /sysroot/firmware
+    mkdir -p /sysroot/upper/upper /sysroot/upper/work /sysroot/rootfs /sysroot/overlay_root /sysroot/firmware /sysroot/modules
 
     # Use a zram device for upperfs if enabled, otherwise use tmpfs
     if [ "$use_zram" = "true" ] && setup_zram; then
@@ -238,6 +238,9 @@ setup_overlay() {
     # Mount firmware filesystem
     mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware \
       || emergency_shell "Failed to mount firmware.squashfs"
+
+    mount -t squashfs "/mnt/modules-$(uname -r).squashfs" /sysroot/modules \
+        || emergency_shell "Failed to mount modules-$(uname -r).squashfs"
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
     if [ ! "$boot_type" = "clean_boot" ]; then
@@ -276,6 +279,9 @@ setup_switchroot() {
     mkdir -p /sysroot/overlay_root/mnt/firmware
     mount --move /sysroot/firmware /sysroot/overlay_root/lib/firmware
 
+    mkdir -p /sysroot/overlay_root/mnt/modules
+    mount --move /sysroot/modules "/sysroot/overlay_root/lib/modules/$(uname -r)"
+
     # If clean boot is active, then make sure the upperdir lives in a place it won't be squashed
     if [ "$boot_type" = "clean_boot" ]; then
         mkdir -p /sysroot/overlay_root/mnt/upperdir-nosave
@@ -303,13 +309,6 @@ wait_for_devices() {
   if [ ! "$found" = "1" ]; then
       emergency_shell "No filesystems detected."
   fi
-
-  # udev can possibly be used, though I think mdev is better here.
-  # udevd --daemon --resolve-names=never
-  # udevadm trigger --type=subsystems --action=add
-  # udevadm settle
-  # udevadm trigger --type=devices --action=add
-  # udevadm settle --timeout=30
 }
 
 main() {

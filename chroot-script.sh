@@ -133,6 +133,8 @@ EOF
 }
 
 install_packages() {
+    touch /first_install
+
     log_debug "Installing base packages"
     apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login \
         linux-pam squashfs-tools e2fsprogs eudev udev-init-scripts udev-init-scripts-openrc elogind polkit-elogind \
@@ -145,6 +147,8 @@ install_packages() {
     log_info "The grub trigger failing is expected behavior. This is not a problem." 
 
     [ -n "$user" ] && apk add doas
+
+    rm /first_install
 }
 
 configure_services() {

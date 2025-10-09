@@ -6,7 +6,7 @@ if [ "$1" = "pre-commit" ]; then
     prev_version="$(apk list -I | grep -E '^mkinitfs-[0-9]' | awk '{print $1}')"
   
     # Just in case
-    [ -z "$prev_version" ] && echo 1 > "$NEEDS_REBUILD"
+    [ -z "$prev_version" ] && NEEDS_REBUILD=1
 
     echo "$prev_version" > "$TMPFILE"
 elif [ "$1" = "post-commit" ]; then

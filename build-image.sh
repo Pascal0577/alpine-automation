@@ -263,7 +263,8 @@ copy_scripts() {
     cp ../init.sh "$dir/usr/share/mkinitfs/init.sh"              || log_error "In copy_scripts: Failed to copy init.sh"
     cp ../base.files "$dir/etc/mkinitfs/features.d/"             || log_error "In copy_scripts: Failed to copy custom.files"
     cp ../base.modules "$dir/etc/mkinitfs/features.d/"           || log_error "In copy_scripts: Failed to copy custom.modules"
-    cp ../mkinitfs_commit_hook.sh "$dir/etc/apk/commit_hooks.d/" || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
+    cp ../mkinitfs-hook.sh "$dir/etc/apk/commit_hooks.d/"        || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
+    cp ../kernel-hook.sh "$dir/etc/apk/commit_hooks.d/my-super-special-commit-hook.sh"          || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
 }
 
 run_chroot() {
@@ -291,14 +292,21 @@ create_squashfs_images() {
     unmount_if_mounted "$dir/boot"
 
     _firmware_path=$(realpath "./alpine/lib/firmware/")
+    _modules_version=$(ls "./alpine/lib/modules")
+    _modules_path=$(realpath "./alpine/lib/modules/$_modules_version")
 
     log_debug "Creating rootfs.squashfs"
-    mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_firmware_path}/"* || \
+    mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_firmware_path}/"* -e "${_modules_path}/"* || \
         log_error "In create_squashfs_images: Failed to create rootfs.squashfs"
 
     log_debug "Creating firmware.squashfs"
     mksquashfs "$_firmware_path" firmware.squashfs -no-compression || \
         log_error "In create_squashfs_images: Failed to create firmware.squashfs"
+
+    log_debug "Creating modules-$_modules_version.squashfs"
+    mksquashfs "$_modules_path" "modules-$_modules_version.squashfs" -no-compression || \
+        log_error "In create_squashfs_images: Failed to create modules-$_modules_version.squashfs"
+
 
     log_debug "Creating upperfs.squashfs"
     touch /root/upperfs_created
@@ -319,6 +327,7 @@ deploy_to_root_device() {
     cp ./rootfs.squashfs "$dir/" && rm ./rootfs.squashfs
     cp ./upperfs.squashfs "$dir/" && rm ./upperfs.squashfs
     cp ./upperfs-backup.squashfs "$dir/" && rm ./upperfs-backup.squashfs
+    cp "./modules-$_modules_version.squashfs" "$dir/" && rm "./modules-$_modules_version.squashfs"
 
     umount "/dev/disk/by-uuid/$root_uuid" || \
         log_error "In deploy_to_root_device: Failed to unmount root device"
