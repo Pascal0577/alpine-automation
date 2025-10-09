@@ -43,5 +43,12 @@ The `upperdir` is squashed to `/persist/upperfs-tmp.squashfs`. This is then moun
 └── upperdir.squashfs               <- Installed packages, user configs, etc
 ```
 
+## Contributing
+This is just a hobby project. Feel free to:
+- Open issues for bugs
+- Submit PRs (no formal process yet)
+
+No guarantees on response time, I just work on this when I have the energy/free time :)
+
 ## Installation
 Clone the repo, and format your USB drive like above. Run the `./build-image.sh` script and go through the prompts. 
