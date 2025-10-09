@@ -300,12 +300,14 @@ create_squashfs_images() {
         log_error "In create_squashfs_images: Failed to create rootfs.squashfs"
 
     log_debug "Creating firmware.squashfs"
-    mksquashfs "$_firmware_path" firmware.squashfs -no-compression || \
+    cd ./alpine
+    mksquashfs lib/firmware ../firmware.squashfs -no-compression -no-strip || \
         log_error "In create_squashfs_images: Failed to create firmware.squashfs"
 
     log_debug "Creating modules-$_modules_version.squashfs"
-    mksquashfs "$_modules_path" "modules-$_modules_version.squashfs" -no-compression || \
+    mksquashfs "lib/modules/$_modules_version" "../modules-$_modules_version.squashfs" -no-compression -no-strip || \
         log_error "In create_squashfs_images: Failed to create modules-$_modules_version.squashfs"
+    cd ..
 
 
     log_debug "Creating upperfs.squashfs"

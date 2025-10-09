@@ -259,7 +259,7 @@ setup_overlay() {
     fi
 
     # Create overlay filesystem
-    mount -t overlay overlay -o lowerdir=/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
+    mount -t overlay overlay -o lowerdir=/sysroot/rootfs:/sysroot/firmware:/sysroot/modules,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
       || emergency_shell "Failed to create overlay filesystem"
 }
 
@@ -277,10 +277,10 @@ setup_switchroot() {
     mount --move /sysroot/rootfs /sysroot/overlay_root/mnt/rootfs
 
     mkdir -p /sysroot/overlay_root/mnt/firmware
-    mount --move /sysroot/firmware /sysroot/overlay_root/lib/firmware
+    mount --move /sysroot/firmware /sysroot/overlay_root/mnt/firmware
 
     mkdir -p /sysroot/overlay_root/mnt/modules
-    mount --move /sysroot/modules "/sysroot/overlay_root/lib/modules/$(uname -r)"
+    mount --move /sysroot/modules /sysroot/overlay_root/mnt/modules
 
     # If clean boot is active, then make sure the upperdir lives in a place it won't be squashed
     if [ "$boot_type" = "clean_boot" ]; then
