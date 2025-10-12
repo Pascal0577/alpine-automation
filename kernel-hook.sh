@@ -4,11 +4,11 @@ readonly VERSION="/run/kernel-hook/kernel-version"
 readonly NEEDS_REBUILD="/run/kernel-hook/kernel-needs-rebuild"
 readonly TMP_DIR="/run/kernel-hook/KERNEL-MODULES-$$/"
 
-# [ -f /first_install ] && first_install=1
-
 if [ "$1" = "pre-commit" ]; then
 
     mkdir -p "$STATE_DIR" 
+    first_install=0
+
     if [ -d /lib/modules ]; then
         prev_version="$(ls /lib/modules)"
     else
@@ -19,6 +19,7 @@ if [ "$1" = "pre-commit" ]; then
     echo "$prev_version" > "$VERSION"
 
 elif [ "$1" = "post-commit" ]; then
+
     [ "$first_install" = 0 ] && {
         prev_version="$(cat "$VERSION")"
         new_version="$(ls /lib/modules)"
@@ -36,4 +37,5 @@ elif [ "$1" = "post-commit" ]; then
         }
     }
     rm -rf "$STATE_DIR"
+
 fi

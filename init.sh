@@ -259,7 +259,7 @@ setup_overlay() {
     fi
 
     # Create overlay filesystem
-    mount -t overlay overlay -o lowerdir=/sysroot/rootfs:/sysroot/firmware:/sysroot/modules,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
+    mount -t overlay overlay -o lowerdir=/sysroot/firmware:/sysroot/modules:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
       || emergency_shell "Failed to create overlay filesystem"
 }
 

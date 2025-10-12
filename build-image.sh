@@ -147,9 +147,9 @@ cleanup() {
     [ -n "$root_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$root_uuid"
   
     if [ "$no_device" = "1" ] && [ "$build_successful" = "1" ]; then
-        mv ./boot ./firmware.squashfs ./rootfs.squashfs ./upperfs.squashfs ../
+        mv ./boot ./firmware.squashfs ./rootfs.squashfs ./upperfs.squashfs ./modules-*.squashfs ../
         rm -rf ./*
-        mv ../boot ../firmware.squashfs ../rootfs.squashfs ../upperfs.squashfs ./
+        mv ../boot ../firmware.squashfs ../rootfs.squashfs ../upperfs.squashfs ./modules-*.squashfs ./
         cd "$pwd" || true
         return 0
     else
@@ -196,16 +196,6 @@ setup_boot_partition() {
             log_error "Failed to mount EFI partition"
     else
         log_debug "Setting up local boot directory"
-        
-        # Get root uuid from cmdline
-        for arg in $(cat "$cmdline"); do
-            case "$arg" in
-            root=UUID=*)
-                root_uuid=${arg#"root=UUID="}
-            esac
-        done
-
-        echo "$root_uuid" > ./root_uuid
         mkdir -p boot "$dir/boot"
         mount --bind boot "$dir/boot" || log_error "In setup_boot_partition: Failed to bind mount boot"
     fi
@@ -304,7 +294,7 @@ create_squashfs_images() {
     _modules_path=$(realpath "./alpine/lib/modules/$_modules_version")
 
     log_debug "Creating rootfs.squashfs"
-    mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_firmware_path}/"* -e "${_modules_path}/"* || \
+    mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_firmware_path}/" -e "${_modules_path}/" || \
         log_error "In create_squashfs_images: Failed to create rootfs.squashfs"
 
     log_debug "Creating firmware.squashfs"
@@ -319,12 +309,12 @@ create_squashfs_images() {
 
 
     log_debug "Creating upperfs.squashfs"
-    touch /root/upperfs_created
-    mksquashfs /root/upperfs_created upperfs.squashfs -comp zstd || \
+    touch upperfs-created
+    mksquashfs upperfs-created upperfs.squashfs -comp zstd || \
         log_error "In create_squashfs_images: Failed to create upperfs.squashfs"
-    mksquashfs /root/upperfs_created upperfs-backup.squashfs -comp zstd || \
+    mksquashfs upperfs-created upperfs-backup.squashfs -comp zstd || \
         log_error "In create_squashfs_images: Failed to create upperfs-backup.squashfs"
-    rm /root/upperfs_created
+    rm upperfs-created
 }
 
 deploy_to_root_device() {
