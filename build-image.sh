@@ -32,6 +32,14 @@ white="$(printf '\033[0m')"
 parse_arguments() {
     while [ $# -gt 0 ]; do
         case "$1" in
+            --root-uuid)
+                shift
+                root_uuid="$1"
+                shift;;
+            --efi-uuid)
+                shift
+                efi_uuid="$1"
+                shift;;
             --hostname)
                 shift
                 hostname="$1"
@@ -178,7 +186,7 @@ setup_build_directory() {
 setup_boot_partition() {
     if [ "$no_device" = "0" ]; then
         log_debug "Setting up device boot partition"
-        ../select-device.sh
+        ../select-device.sh --efi-uuid "$efi_uuid" --root-uuid "$root_uuid"
         
         efi_uuid=$(awk '{print $1}' ./vfat_uuid)
         root_uuid=$(awk '{print $1}' ./root_uuid)
