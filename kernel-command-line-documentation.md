@@ -22,5 +22,6 @@
     - The encrypted filesystem that the initramfs should unlock
     - It is decrypted to `/dev/mapper/<name>`
     - Decryption via key files not yet supported.
-
+- `squashfs_version=<image name>`
+    - The name of the squashfs image to be unpacked into tmpfs/zram. Looks for `<image name>.squashfs` on the USB partition.
 

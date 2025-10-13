@@ -41,6 +41,9 @@ parse_cmdline() {
     # Read the root UUID from /proc/cmdline
     for arg in $(cat /proc/cmdline); do
         case "$arg" in
+            squashfs_version=*)
+                squashfs_version=${arg#"squashfs_version="}
+                log_info "Using image: $squashfs_version.squashfs" ;;
             root=UUID=*)
                 root_uuid=${arg#"root=UUID="}
                 log_info "Found filesystem with UUID $root_uuid" ;;
@@ -142,7 +145,6 @@ setup_zram() {
             *%)
                 # Get total memory in KB
                 total_mem=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-
                 percent=${zram_size%\%}
                 zram_size=$((total_mem * percent / 100)) ;;
             *M|*m)
