@@ -1,18 +1,19 @@
 #!/bin/sh
-readonly STATE_DIR="/run/kernel-hook/"
-readonly VERSION="/run/kernel-hook/kernel-version"
-readonly NEEDS_REBUILD="/run/kernel-hook/kernel-needs-rebuild"
-readonly TMP_DIR="/run/kernel-hook/KERNEL-MODULES-$$/"
+readonly STATE_DIR="/run/kernel-hook"
+readonly VERSION="$STATE_DIR/kernel-version"
+readonly NEEDS_REBUILD="$STATE_DIR/kernel-needs-rebuild"
+readonly TMP_DIR="$STATE_DIR/KERNEL-MODULES-$$/"
+readonly FIRST_INSTALL="$STATE_DIR/first-install"
 
 if [ "$1" = "pre-commit" ]; then
 
     mkdir -p "$STATE_DIR" 
-    first_install=0
+    echo 0 > "$FIRST_INSTALL"
 
     if [ -d /lib/modules ]; then
         prev_version="$(ls /lib/modules)"
     else
-        first_install=1
+        echo 1 > "$FIRST_INSTALL"
     fi
 
     [ -z "$prev_version" ] && echo 1 > "$NEEDS_REBUILD"
@@ -20,7 +21,7 @@ if [ "$1" = "pre-commit" ]; then
 
 elif [ "$1" = "post-commit" ]; then
 
-    [ "$first_install" = 0 ] && {
+    [ "$(cat "$FIRST_INSTALL")" = 0 ] && {
         prev_version="$(cat "$VERSION")"
         new_version="$(ls /lib/modules)"
 
