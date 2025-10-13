@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# TODO: Add LVM support and Plymouth support
-# TODO: Add support for decryption via key file
+# TODO: Add Plymouth support
 
 root_uuid=""
 crypt_uuid=""
@@ -156,7 +155,6 @@ setup_zram() {
     return 1
 }
 
-# TODO: Add support for keyfiles
 open_encrypted_filesystem() {
     for i in 1 2 3; do
         if cryptsetup open --type luks UUID="$1" "$2"; then
