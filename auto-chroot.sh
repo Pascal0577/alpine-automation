@@ -183,8 +183,6 @@ main() {
         log_debug "/etc/profile found, sourcing it when entering the chroot environment"
     }
 
-    is_mounted "$mountpoint" || log_warn "$mountpoint is not a mountpoint"
-
     if mount_filesystems "$mountpoint"; then
         setup_network "$mountpoint"
         log_debug "Command running: chroot '$mountpoint' '$shell' -c '$command; exit 0'"

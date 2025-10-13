@@ -3,7 +3,11 @@
 set -e
 
 # Default configuration
-readonly DEFAULT_URL="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.1-x86_64.tar.gz"
+readonly ALPINE_VERSION="v3.22"
+readonly ALPINE_RELEASE="3.22.1"
+readonly ALPINE_ARCH="x86_64"
+
+readonly DEFAULT_URL="https://dl-cdn.alpinelinux.org/alpine/$ALPINE_VERSION/releases/$ALPINE_ARCH/alpine-minirootfs-$ALPINE_RELEASE-$ALPINE_ARCH.tar.gz"
 readonly BUILD_DIR="alpine"
 readonly ARCHIVE_NAME="alpine-minirootfs"
 readonly CHROOT_COMMAND="chroot-script.sh"
