@@ -29,3 +29,6 @@ kernel/fs/mbcache*
 kernel/lib/lz4_compress*
 kernel/lib/lz4hc_compress*
 kernel/lib/crc16*
+
+kernel/drivers/md/dm-mod*
+kernel/drivers/md/dm-crypt*

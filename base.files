@@ -7,3 +7,4 @@
 /etc/modprobe.d/*.conf
 /etc/mdev.conf
 /usr/bin/unsquashfs
+/sbin/cryptsetup

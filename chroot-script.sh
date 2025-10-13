@@ -137,7 +137,7 @@ install_packages() {
 
     log_debug "Installing base packages"
     apk add alpine-base linux-lts wpa_supplicant util-linux util-linux-login \
-        linux-pam squashfs-tools e2fsprogs eudev udev-init-scripts udev-init-scripts-openrc elogind polkit-elogind \
+        linux-pam squashfs-tools e2fsprogs eudev udev-init-scripts udev-init-scripts-openrc elogind polkit-elogind cryptsetup \
         || log_error "in install_packages: failed to install critical packages"
 
     # The grub trigger will fail due to lack of device being mounted at /

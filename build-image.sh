@@ -274,7 +274,7 @@ run_chroot() {
     [ "$edge" = "1" ] && _chroot_command="$_chroot_command --edge"
     [ "$verbose" = "1" ] && _chroot_command="$_chroot_command --verbose"
     [ "$no_device" = 1 ] && _chroot_command="$_chroot_command --no-device"
-    [ -n "$cmdline" ] && _chroot_command="$_chroot_command --cmdline $cmdline"
+    [ -n "$cmdline" ] && _chroot_command="$_chroot_command --cmdline '$cmdline'"
     [ -n "$user" ] && _chroot_command="$_chroot_command --user $user"
     [ -n "$hostname" ] && _chroot_command="$_chroot_command --hostname $hostname"
 

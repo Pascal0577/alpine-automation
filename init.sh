@@ -93,7 +93,10 @@ load_modules() {
     [ "$use_zram" = "true" ] && modprobe zram &
 
     # Load kernel modules for decryption if needed
-    [ -n "$crypt_uuid" ] && modprobe dm-crypt &
+    [ -n "$crypt_uuid" ] && {
+        modprobe dm-crypt &
+        modprobe dm-mod &
+    }
 }
 
 wait_for_devices() {
@@ -156,8 +159,11 @@ setup_zram() {
 # TODO: Add support for keyfiles
 open_encrypted_filesystem() {
     for i in 1 2 3; do
-        cryptsetup open --type luks UUID="$1" "$2" || \
+        if cryptsetup open --type luks UUID="$1" "$2"; then
+            return 0
+        else
             echo "Could not open filesystem. Try again."
+        fi
     done
     return 1
 }
@@ -166,11 +172,14 @@ mount_device() {
     # Try to decrypt the filesystem if needed
     if [ -n "$crypt_uuid" ]; then
         open_encrypted_filesystem "$crypt_uuid" "$crypt_name" \
-          || emergency_shell "Failed to open encrypted filesystem. Exiting."
+            || emergency_shell "Failed to open encrypted filesystem. Exiting."
+        mount "/dev/mapper/$crypt_name" /mnt \
+            || emergency_shell "Failed to mount /dev/mapper/$crypt_name"
+        return 0
     fi
 
     # Attempt to mount filesystem based off UUID
-    mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null && return 0
+    mount "/dev/disk/by-uuid/$root_uuid" /mnt
 }
 
 setup_overlay() {
@@ -221,11 +230,7 @@ setup_overlay() {
     fi
 
     # Create overlay filesystem
-    mount -t overlay overlay -o \
-        lowerdir=/sysroot/firmware:/sysroot/modules:/sysroot/rootfs, \
-        upperdir=/sysroot/upper/upper, \
-        workdir=/sysroot/upper/work \
-        /sysroot/overlay_root \
+    mount -t overlay overlay -o lowerdir=/sysroot/firmware:/sysroot/modules:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
         || emergency_shell "Failed to create overlay filesystem"
 }
 
