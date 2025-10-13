@@ -4,17 +4,15 @@
 # TODO: Add support for decryption via key file
 
 root_uuid=""
-root_dev=""
 crypt_uuid=""
 crypt_name=""
-mount_needed="true"
 
 use_zram="false"
 zram_size="100%"
 zram_compression="zstd"
 
 boot_type="default_boot"
-squashfs_version="upperfs.squashfs"
+squashfs_version="upperfs"
 
 emergency_shell() {
     printf "[ERROR]: %s\n" "$1">&2
@@ -36,9 +34,7 @@ safe_mount() {
     src="$1"
     dest="$2"
 
-    if ! mount "$src" "$dest"; then
-        emergency_shell "Failed to mount $src to $dest"
-    fi
+    mount "$src" "$dest" || emergency_shell "Failed to mount $src to $dest"
 }
 
 parse_cmdline() {
@@ -72,25 +68,15 @@ parse_cmdline() {
 # Mount all available filesystems and check for rootfs.squashfs. First filesystem to have it is returned
 # TODO: Try to detect root based on filesystem type.
 detect_root_fallback() {
-    for dev in /dev/disk/by-uuid/*; do
-        # Handle empty case
-        [ ! -e "$dev" ] && continue  
-        device=$(basename "$dev")
-
-        # Skip trying to mount ram and loop devices
-        case "$device" in
-            loop*|ram*)
-                continue ;;
-        esac
-
-        if ! mount "/dev/$device" /mnt 2>/dev/null; then
-            log_warn "Could not mount $device. Skipping."
+    for _uuid in /dev/disk/by-uuid/*; do
+        mount "/dev/disk/by-uuid/$_uuid" /mnt 2>/dev/null || {
+            log_warn "Could not mount /dev/disk/by-uuid/$_uuid. Skipping."
             continue
-        fi
+        }
 
         if [ -f /mnt/rootfs.squashfs ]; then
             umount /mnt
-            echo "$device"
+            root_uuid="$_uuid"
             return 0
         fi
 
@@ -125,6 +111,25 @@ load_modules() {
 
     # Load kernel modules for decryption if needed
     [ -n "$crypt_uuid" ] && modprobe dm-crypt &
+}
+
+wait_for_devices() {
+  # Wait until block devices are populated
+  mkdir -p /dev/disk/by-uuid/ || true
+  for i in $(seq 1 200); do
+      for uuid in /dev/disk/by-uuid/*; do
+        [ -e "$uuid" ] && {
+          found=1
+          break 2
+        }
+      done
+      sleep 0.05
+  done
+
+  # If nothing was found after time limit then drop to shell
+  if [ ! "$found" = "1" ]; then
+      emergency_shell "No filesystems detected."
+  fi
 }
 
 # Setup zram block device for overlay upper directory
@@ -174,11 +179,9 @@ setup_zram() {
 
 # TODO: Add support for keyfiles
 open_encrypted_filesystem() {
-    for i in $(seq 1 3); do
-        if cryptsetup open --type luks UUID="$1" "$2"; then
-            return 0
-        fi
-        echo "Could not open filesystem. Try again."
+    for i in 1 2 3; do
+        cryptsetup open --type luks UUID="$1" "$2" || \
+            echo "Could not open filesystem. Try again."
     done
     return 1
 }
@@ -191,30 +194,12 @@ mount_device() {
     fi
 
     # Attempt to mount filesystem based off UUID
-    if mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null; then
-        log_info "Mounting filesystem by UUID"
-        return 0
-    fi
+    mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null && return 0
 
     # Fallback if mounting via UUID is unavailable for whatever reason
-    if root_dev=$(detect_root_fallback); then
-        log_info "Mounting /dev/$root_dev to /mnt by device name"
-        safe_mount "/dev/$root_dev" /mnt
-        return 0
-    else
-        emergency_shell "No devices with rootfs.squashfs found"
-    fi
-}
-
-set_squashfs_version() {
-    case "$boot_type" in
-        default_boot)
-            squashfs_version="upperfs.squashfs" ;;
-        backup_boot)
-            squashfs_version="upperfs-backup.squashfs" ;;
-    esac
-
-    log_info "Squashfs type set to: $squashfs_version" 
+    log_info "Trying to detect filesystem via fallback."
+    detect_root_fallback
+    mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null
 }
 
 setup_overlay() {
@@ -244,11 +229,11 @@ setup_overlay() {
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
     if [ ! "$boot_type" = "clean_boot" ]; then
-        if [ -f /mnt/$squashfs_version ]; then
-            unsquashfs -f -d /sysroot/upper/upper /mnt/$squashfs_version \
-              || emergency_shell "Failed to unsquash $squashfs_version"
-        elif [ -f /mnt/upperfs-backup.squashfs ]; then  # Try backup boot if we can't default boot
-            log_warn "/mnt/$squashfs_version not found. Trying backup."
+        if [ -f "/mnt/$squashfs_version.squashfs" ]; then
+            unsquashfs -f -d /sysroot/upper/upper "/mnt/$squashfs_version.squashfs" \
+              || emergency_shell "Failed to unsquash $squashfs_version.squashfs"
+        elif [ -f "/mnt/$squashfs_version-backup.squashfs" ]; then  # Try backup boot if we can't default boot
+            log_warn "/mnt/$squashfs_version.squashfs not found. Trying backup."
             boot_type="backup_boot"
             unsquashfs -f -d /sysroot/upper/upper /mnt/upperfs-backup.squashfs \
               || emergency_shell "Failed to unsquash upperfs-backup.squashfs"
@@ -292,25 +277,6 @@ setup_switchroot() {
     fi
 }
 
-wait_for_devices() {
-  # Wait until block devices are populated
-  mkdir -p /dev/disk/by-uuid/ || true
-  for i in $(seq 1 200); do
-      for uuid in /dev/disk/by-uuid/*; do
-        [ -e "$uuid" ] && {
-          found=1
-          break 2
-        }
-      done
-      sleep 0.05
-  done
-
-  # If nothing was found after time limit then drop to shell
-  if [ ! "$found" = "1" ]; then
-      emergency_shell "No filesystems detected."
-  fi
-}
-
 main() {
     /bin/busybox --install -s 
 
@@ -327,8 +293,6 @@ main() {
     mkdir /mnt
 
     mount_device
-
-    set_squashfs_version
 
     setup_overlay
 

@@ -143,7 +143,7 @@ install_packages() {
     # The grub trigger will fail due to lack of device being mounted at /
     # This is expected behavior. Grub is configured manually later
     # We let it fail gracefully here
-    apk add grub-efi efibootmgr | grep -v "grub.*trigger: exited with error" || true
+    apk add grub-efi efibootmgr || true
     log_info "The grub trigger failing is expected behavior. This is not a problem." 
 
     [ -n "$user" ] && apk add doas

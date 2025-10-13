@@ -138,10 +138,10 @@ cleanup() {
     log_debug "Running cleanup"
   
     log_debug "Trying to unmount $pwd/build/$dir/boot"
-    unmount_if_mounted "$pwd/build/$dir/boot" 
+    umount "$pwd/build/$dir/boot" 2>/dev/null || true
 
     log_debug "Trying to unmount $pwd/build/$dir"
-    unmount_if_mounted "$pwd/build/$dir"
+    umount "$pwd/build/$dir" 2>/dev/null || true
   
     [ -n "$efi_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$efi_uuid"
     [ -n "$root_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$root_uuid"
@@ -253,16 +253,18 @@ copy_scripts() {
     mkdir -p "$dir/etc/mkinitfs/features.d/"
     mkdir -p "$dir/etc/apk/commit_hooks.d/"
     
-    cp ./root_uuid "$dir/"                                       || log_error "In copy_scripts: Failed to copy root_uuid"
-    cp ../chroot-script.sh "$dir/bin/"                           || log_error "In copy_scripts: Failed to copy chroot-script.sh"
-    cp ../squash-upperdir "$dir/bin/"                            || log_error "In copy_scripts: Failed to copy squash-upperdir"
-    cp ../squashdir "$dir/etc/init.d/"                           || log_error "In copy_scripts: Failed to copy squashdir"
-    cp ../init.sh "$dir/usr/share/mkinitfs/initramfs-init"       || log_error "In copy_scripts: Failed to copy initramfs-init"
-    cp ../init.sh "$dir/usr/share/mkinitfs/init.sh"              || log_error "In copy_scripts: Failed to copy init.sh"
-    cp ../base.files "$dir/etc/mkinitfs/features.d/"             || log_error "In copy_scripts: Failed to copy custom.files"
-    cp ../base.modules "$dir/etc/mkinitfs/features.d/"           || log_error "In copy_scripts: Failed to copy custom.modules"
-    cp ../mkinitfs-hook.sh "$dir/etc/apk/commit_hooks.d/"        || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
-    cp ../kernel-hook.sh "$dir/etc/apk/commit_hooks.d/my-super-special-commit-hook.sh"          || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
+    cp ./root_uuid "$dir/"                                 || log_error "In copy_scripts: Failed to copy root_uuid"
+    cp ../chroot-script.sh "$dir/bin/"                     || log_error "In copy_scripts: Failed to copy chroot-script.sh"
+    cp ../squash-upperdir "$dir/bin/"                      || log_error "In copy_scripts: Failed to copy squash-upperdir"
+    cp ../squashdir "$dir/etc/init.d/"                     || log_error "In copy_scripts: Failed to copy squashdir"
+    cp ../init.sh "$dir/usr/share/mkinitfs/initramfs-init" || log_error "In copy_scripts: Failed to copy initramfs-init"
+    cp ../init.sh "$dir/usr/share/mkinitfs/init.sh"        || log_error "In copy_scripts: Failed to copy init.sh"
+    cp ../base.files "$dir/etc/mkinitfs/features.d/"       || log_error "In copy_scripts: Failed to copy custom.files"
+    cp ../base.modules "$dir/etc/mkinitfs/features.d/"     || log_error "In copy_scripts: Failed to copy custom.modules"
+    cp ../mkinitfs-hook.sh "$dir/etc/apk/commit_hooks.d/"  || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
+    cp ../kernel-hook.sh "$dir/etc/apk/commit_hooks.d/"    || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
+    cp ../firmware-hook.sh "$dir/etc/apk/commit_hooks.d/"  || log_error "In copy_scripts: Failed to copy mkinitfs_commit_hook.sh"
+    touch "$dir/first_install"
 }
 
 run_chroot() {
@@ -335,7 +337,7 @@ deploy_to_root_device() {
 
 main() {
     trap 'cleanup; exit 1' INT TERM
-    trap cleanup EXIT
+    trap cleanup EXIT INT TERM
 
     parse_arguments "$@"
     [ "$(id -u)" != 0 ] && log_error "In main: Please run as root."
