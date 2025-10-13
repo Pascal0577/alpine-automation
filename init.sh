@@ -68,26 +68,6 @@ parse_cmdline() {
     done
 }
 
-# Mount all available filesystems and check for rootfs.squashfs. First filesystem to have it is returned
-# TODO: Try to detect root based on filesystem type.
-detect_root_fallback() {
-    for _uuid in /dev/disk/by-uuid/*; do
-        mount "/dev/disk/by-uuid/$_uuid" /mnt 2>/dev/null || {
-            log_warn "Could not mount /dev/disk/by-uuid/$_uuid. Skipping."
-            continue
-        }
-
-        if [ -f /mnt/rootfs.squashfs ]; then
-            umount /mnt
-            root_uuid="$_uuid"
-            return 0
-        fi
-
-        umount /mnt
-    done
-    return 1
-}
-
 load_modules() {
     depmod -a
     echo "/sbin/mdev" > /proc/sys/kernel/hotplug
@@ -122,17 +102,11 @@ wait_for_devices() {
   for i in $(seq 1 200); do
       for uuid in /dev/disk/by-uuid/*; do
         [ -e "$uuid" ] && {
-          found=1
-          break 2
+          return 0
         }
       done
       sleep 0.05
   done
-
-  # If nothing was found after time limit then drop to shell
-  if [ ! "$found" = "1" ]; then
-      emergency_shell "No filesystems detected."
-  fi
 }
 
 # Setup zram block device for overlay upper directory
@@ -197,15 +171,14 @@ mount_device() {
 
     # Attempt to mount filesystem based off UUID
     mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null && return 0
-
-    # Fallback if mounting via UUID is unavailable for whatever reason
-    log_info "Trying to detect filesystem via fallback."
-    detect_root_fallback
-    mount "/dev/disk/by-uuid/$root_uuid" /mnt 2>/dev/null
 }
 
 setup_overlay() {
-    mkdir -p /sysroot/upper/upper /sysroot/upper/work /sysroot/rootfs /sysroot/overlay_root /sysroot/firmware /sysroot/modules
+    mkdir -p /sysroot/upper \
+        /sysroot/rootfs \
+        /sysroot/overlay_root \
+        /sysroot/firmware \
+        /sysroot/modules
 
     # Use a zram device for upperfs if enabled, otherwise use tmpfs
     if [ "$use_zram" = "true" ] && setup_zram; then
@@ -220,34 +193,40 @@ setup_overlay() {
 
     # Mount squashfs root filesystem. This is NOT in RAM.
     mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop \
-      || emergency_shell "Failed to mount rootfs.squashfs"
+        || emergency_shell "Failed to mount rootfs.squashfs"
 
     # Mount firmware filesystem
     mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware \
-      || emergency_shell "Failed to mount firmware.squashfs"
+        || emergency_shell "Failed to mount firmware.squashfs"
 
     mount -t squashfs "/mnt/modules-$(uname -r).squashfs" /sysroot/modules \
         || emergency_shell "Failed to mount modules-$(uname -r).squashfs"
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
-    if [ ! "$boot_type" = "clean_boot" ]; then
+    if [ "$boot_type" != "clean_boot" ]; then
         if [ -f "/mnt/$squashfs_version.squashfs" ]; then
             unsquashfs -f -d /sysroot/upper/upper "/mnt/$squashfs_version.squashfs" \
               || emergency_shell "Failed to unsquash $squashfs_version.squashfs"
-        elif [ -f "/mnt/$squashfs_version-backup.squashfs" ]; then  # Try backup boot if we can't default boot
+        elif [ -f "/mnt/$squashfs_version-backup.squashfs" ]; then  
+            # Try backup boot if we can't default boot
             log_warn "/mnt/$squashfs_version.squashfs not found. Trying backup."
             boot_type="backup_boot"
             unsquashfs -f -d /sysroot/upper/upper /mnt/upperfs-backup.squashfs \
               || emergency_shell "Failed to unsquash upperfs-backup.squashfs"
-        else  # Fallback to clean boot if we can't backup boot
+        else
+            # Fallback to clean boot if we can't backup boot
             log_warn "Backup not found. Starting clean boot."
             boot_type="clean_boot"
         fi
     fi
 
     # Create overlay filesystem
-    mount -t overlay overlay -o lowerdir=/sysroot/firmware:/sysroot/modules:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
-      || emergency_shell "Failed to create overlay filesystem"
+    mount -t overlay overlay -o \
+        lowerdir=/sysroot/firmware:/sysroot/modules:/sysroot/rootfs, \
+        upperdir=/sysroot/upper/upper, \
+        workdir=/sysroot/upper/work \
+        /sysroot/overlay_root \
+        || emergency_shell "Failed to create overlay filesystem"
 }
 
 setup_switchroot() {
