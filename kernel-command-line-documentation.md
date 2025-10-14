@@ -23,5 +23,10 @@
     - It is decrypted to `/dev/mapper/<name>`
     - Decryption via key files not yet supported.
 - `squashfs_version=<image name>`
-    - The name of the squashfs image to be unpacked into tmpfs/zram. Looks for `<image name>.squashfs` on the USB partition.
+    - The name of the squashfs image to be unpacked into tmpfs/zram
+    - Looks for `<image name>.squashfs` on the USB partition.
+- `full_ramdisk=<0 | 1>`
+    - Whether to unsquash the root filesystem into tmpfs
+    - The default option is `0` which does not unsquash `rootfs.squashfs` into `tmpfs`.
+    - Setting this to `1` means all files in the filesystem will be in system memory.
 

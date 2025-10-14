@@ -13,6 +13,8 @@ zram_compression="zstd"
 boot_type="default_boot"
 squashfs_version="upperfs"
 
+full_ramdisk=0
+
 emergency_shell() {
     printf "[ERROR]: %s\n" "$1">&2
     echo "Dropping to emergency shell..."
@@ -40,6 +42,9 @@ parse_cmdline() {
     # Read the root UUID from /proc/cmdline
     for arg in $(cat /proc/cmdline); do
         case "$arg" in
+            full_ramdisk=*)
+                full_ramdisk="${arg#full_ramdisk=}"
+                log_info "Using a full ramdisk" ;;
             squashfs_version=*)
                 squashfs_version=${arg#"squashfs_version="}
                 log_info "Using image: $squashfs_version.squashfs" ;;
@@ -199,9 +204,14 @@ setup_overlay() {
 
     mkdir -p /sysroot/upper/upper /sysroot/upper/work
 
-    # Mount squashfs root filesystem. This is NOT in RAM.
-    mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop \
-        || emergency_shell "Failed to mount rootfs.squashfs"
+    if [ "$full_ramdisk" = 0 ]; then
+        mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop \
+            || emergency_shell "Failed to mount rootfs.squashfs"
+    elif [ "$full_ramdisk" = 1 ]; then
+        mount -t tmpfs -o size=100% tmpfs /sysroot/rootfs \
+            || emergency_shell "Failed to make tmpfs on /sysroot/rootfs"
+        unsquashfs -f -d /sysroot/rootfs/ /mnt/rootfs.squashfs
+    fi
 
     mount -t squashfs "/mnt/modules-$(uname -r).squashfs" /sysroot/modules \
         || emergency_shell "Failed to mount modules-$(uname -r).squashfs"
