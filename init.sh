@@ -207,14 +207,17 @@ setup_overlay() {
     if [ "$full_ramdisk" = 0 ]; then
         mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop \
             || emergency_shell "Failed to mount rootfs.squashfs"
+        mount -t squashfs "/mnt/modules-$(uname -r).squashfs" /sysroot/modules \
+            || emergency_shell "Failed to mount modules-$(uname -r).squashfs"
     elif [ "$full_ramdisk" = 1 ]; then
-        mount -t tmpfs -o size=100% tmpfs /sysroot/rootfs \
+        mount -t tmpfs tmpfs /sysroot/rootfs \
             || emergency_shell "Failed to make tmpfs on /sysroot/rootfs"
+        mount -t tmpfs tmpfs /sysroot/modules \
+            || emergency_shell "Failed to make tmpfs on /sysroot/modules"
         unsquashfs -f -d /sysroot/rootfs/ /mnt/rootfs.squashfs
+        unsquashfs -f -d /sysroot/modules/ "/mnt/modules-$(uname -r).squashfs"
     fi
 
-    mount -t squashfs "/mnt/modules-$(uname -r).squashfs" /sysroot/modules \
-        || emergency_shell "Failed to mount modules-$(uname -r).squashfs"
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
     if [ "$boot_type" != "clean_boot" ]; then
@@ -236,31 +239,35 @@ setup_overlay() {
 
     mount -t overlay overlay -o lowerdir=/sysroot/modules:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
         || emergency_shell "Failed to create overlay filesystem"
+
+    umount /mnt
 }
 
 setup_switchroot() {
     mkdir -p /sysroot/overlay_root/persist
-
-    mount --move /mnt /sysroot/overlay_root/persist
     mount --move /proc /sysroot/overlay_root/proc
     mount --move /sys /sysroot/overlay_root/sys
     mount --move /dev /sysroot/overlay_root/dev
 
-    # Makes upperdir and lowerdir accessible from new root
-    mkdir -p /sysroot/overlay_root/mnt/rootfs
-    mount --move /sysroot/rootfs /sysroot/overlay_root/mnt/rootfs
+    [ "$full_ramdisk" = 0 ] && {
+        mount --move /mnt /sysroot/overlay_root/persist
 
-    mkdir -p /sysroot/overlay_root/mnt/modules
-    mount --move /sysroot/modules /sysroot/overlay_root/mnt/modules
+        # Makes upperdir and lowerdir accessible from new root
+        mkdir -p /sysroot/overlay_root/mnt/rootfs
+        mount --move /sysroot/rootfs /sysroot/overlay_root/mnt/rootfs
 
-    # If clean boot is active, then make sure the upperdir lives in a place it won't be squashed
-    if [ "$boot_type" = "clean_boot" ]; then
-        mkdir -p /sysroot/overlay_root/mnt/upperdir-nosave
-        mount --bind /sysroot/upper/upper /sysroot/overlay_root/mnt/upperdir-nosave
-    else
-        mkdir -p /sysroot/overlay_root/mnt/upperdir
-        mount --bind /sysroot/upper/upper /sysroot/overlay_root/mnt/upperdir
-    fi
+        mkdir -p /sysroot/overlay_root/mnt/modules
+        mount --move /sysroot/modules /sysroot/overlay_root/mnt/modules
+
+        # If clean boot is active, then make sure the upperdir lives in a place it won't be squashed
+        if [ "$boot_type" = "clean_boot" ]; then
+            mkdir -p /sysroot/overlay_root/mnt/upperdir-nosave
+            mount --bind /sysroot/upper/upper /sysroot/overlay_root/mnt/upperdir-nosave
+        else
+            mkdir -p /sysroot/overlay_root/mnt/upperdir
+            mount --bind /sysroot/upper/upper /sysroot/overlay_root/mnt/upperdir
+        fi
+    }
 }
 
 main() {
