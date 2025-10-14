@@ -300,6 +300,7 @@ create_squashfs_images() {
     mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_modules_path}/" || \
         log_error "In create_squashfs_images: Failed to create rootfs.squashfs"
 
+    cd "$dir"
     log_debug "Creating modules-$_modules_version.squashfs"
     mksquashfs "lib/modules/$_modules_version" "../modules-$_modules_version.squashfs" -no-compression -no-strip || \
         log_error "In create_squashfs_images: Failed to create modules-$_modules_version.squashfs"
