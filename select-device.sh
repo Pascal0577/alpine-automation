@@ -19,13 +19,13 @@ parse_arguments() {
 }
 
 select_efi() {
-    vfat_tmp=$(mktemp)
+    efi_tmp=$(mktemp)
 
-    lsblk -flp -o NAME,FSTYPE,UUID | awk '$2 == "vfat" { print $1, $3 }' > "$vfat_tmp"
+    lsblk -flp -o NAME,FSTYPE,UUID | awk '$2 == "vfat" { print $1, $3 }' > "$efi_tmp"
 
-    if [ ! -s "$vfat_tmp" ]; then
+    if [ ! -s "$efi_tmp" ]; then
         echo "No vfat devices found."
-        rm -f "$vfat_tmp" "$root_tmp"
+        rm -f "$efi_tmp" "$root_tmp"
         exit 1
     fi
 
@@ -36,17 +36,17 @@ select_efi() {
         dev=$(echo "$line" | awk '{print $1}')
         uuid=$(echo "$line" | awk '{print $2}')
         echo "$i) $dev (UUID: $uuid)"
-        echo "$i $dev $uuid" >> /tmp/vfat_menu
-    done < "$vfat_tmp"
+        echo "$i $dev $uuid" >> /tmp/efi_menu
+    done < "$efi_tmp"
 
     printf "Enter the number of the VFAT device you want to use: "
     read -r choice_vfat
 
-    EFI_UUID=$(awk -v n="$choice_vfat" '$1 == n { print $3 }' /tmp/vfat_menu)
+    EFI_UUID=$(awk -v n="$choice_vfat" '$1 == n { print $3 }' /tmp/efi_menu)
 
     if [ -z "$EFI_UUID" ]; then
         echo "Invalid selection."
-        rm -f "$vfat_tmp" "$root_tmp" /tmp/vfat_menu
+        rm -f "$efi_tmp" "$root_tmp" /tmp/efi_menu
         exit 1
     fi
 }
@@ -58,7 +58,7 @@ select_root() {
 
     if [ ! -s "$root_tmp" ]; then
         echo "No root (ext4) devices found."
-        rm -f "$vfat_tmp" "$root_tmp"
+        rm -f "$efi_tmp" "$root_tmp"
         exit 1
     fi
 
@@ -79,7 +79,7 @@ select_root() {
 
     if [ -z "$ROOT_UUID" ]; then
         echo "Invalid selection."
-        rm -f "$vfat_tmp" "$root_tmp" /tmp/vfat_menu /tmp/root_menu
+        rm -f "$efi_tmp" "$root_tmp" /tmp/efi_menu /tmp/root_menu
         exit 1
     fi
 }
@@ -100,10 +100,10 @@ main() {
     { [ -z "$EFI_UUID" ]  || ! validate_filesystem_uuid "$EFI_UUID"; }  && select_efi
     { [ -z "$ROOT_UUID" ] || ! validate_filesystem_uuid "$ROOT_UUID"; } && select_root
 
-    echo "$EFI_UUID" > ./vfat_uuid
-    echo "$ROOT_UUID" > ./root_uuid
+    echo "$EFI_UUID" > ./EFI_UUID
+    echo "$ROOT_UUID" > ./ROOT_UUID
 
-    rm -f "$vfat_tmp" "$root_tmp" /tmp/vfat_menu /tmp/root_menu
+    rm -f "$efi_tmp" "$root_tmp" /tmp/efi_menu /tmp/root_menu
 }
 
 main "$@"

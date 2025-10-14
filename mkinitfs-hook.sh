@@ -4,7 +4,8 @@ readonly VERSION="$STATE_DIR/version"
 readonly NEEDS_REBUILD="$STATE_DIR/needs-rebuild"
 
 if [ "$1" = "pre-commit" ]; then
-
+    
+    mkdir -p "$STATE_DIR"
     echo 0 > "$NEEDS_REBUILD"
     prev_version="$(apk list -I | grep -E '^mkinitfs-[0-9]' | awk '{print $1}')"
   

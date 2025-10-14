@@ -2,7 +2,7 @@
 
 edge=0
 verbose=0
-root_uuid="$(cat ./root_uuid)"
+root_uuid="$(cat ./ROOT_UUID)"
 cmdline="root=UUID=$root_uuid"
 user=""
 hostname=""
@@ -66,7 +66,7 @@ parse_arguments() {
         esac
     done
 
-    rm ./root_uuid
+    rm ./ROOT_UUID
 }
 
 configure_etc() {

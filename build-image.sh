@@ -3,29 +3,24 @@
 set -e
 
 # Default configuration
-readonly ALPINE_VERSION="v3.22"
-readonly ALPINE_RELEASE="3.22.1"
-readonly ALPINE_ARCH="x86_64"
-
-readonly DEFAULT_URL="https://dl-cdn.alpinelinux.org/alpine/$ALPINE_VERSION/releases/$ALPINE_ARCH/alpine-minirootfs-$ALPINE_RELEASE-$ALPINE_ARCH.tar.gz"
 readonly BUILD_DIR="alpine"
 readonly ARCHIVE_NAME="alpine-minirootfs"
 readonly CHROOT_COMMAND="chroot-script.sh"
+readonly pwd="$PWD"
 
 # Configuration variables
-url="$DEFAULT_URL"
 dir="$BUILD_DIR"
 archive_name="$ARCHIVE_NAME"
 command="$CHROOT_COMMAND"
-checksum_check=1
-no_device=0
-cleanup_happened=0
-verbose=0
-edge=0
-cmdline=""
+CHECKSUM_CHECK=1
+NO_DEVICE=0
+NO_CLEANUP=0
+VERBOSE=0
+EDGE=0
+CMDLINE=""
 build_successful=0
-user=""
-hostname=""
+USER=""
+ALPINE_HOSTNAME=""
 
 # Colors for log messages
 red="$(printf '\033[0;31m')"
@@ -33,47 +28,48 @@ blue="$(printf '\033[0;34m')"
 green="$(printf '\033[0;32m')"
 white="$(printf '\033[0m')"
 
+
 parse_arguments() {
     while [ $# -gt 0 ]; do
         case "$1" in
             --root-uuid)
                 shift
-                root_uuid="$1"
+                ROOT_UUID="$1"
                 shift;;
             --efi-uuid)
                 shift
-                efi_uuid="$1"
+                EFI_UUID="$1"
                 shift;;
             --hostname)
                 shift
-                hostname="$1"
+                ALPINE_HOSTNAME="$1"
                 shift ;;
             --user)
                 shift
-                user="$1"
+                USER="$1"
                 shift ;;
             --cmdline)
                 shift
-                cmdline="$1"
+                CMDLINE="$1"
                 shift ;;
             --no-device)
-                no_device=1
+                NO_DEVICE=1
                 shift ;;
             --no-cleanup)
-                cleanup_happened=1
+                NO_CLEANUP=1
                 shift ;;
             --no-checksum)
-                checksum_check=0
+                CHECKSUM_CHECK=0
                 shift ;;
             -u|--url)
                 shift
-                url="$1"
+                URL="$1"
                 shift ;;
             --edge)
-                edge=1
+                EDGE=1
                 shift ;;
             -v|--verbose)
-                verbose=1
+                VERBOSE=1
                 shift ;;
             -h|--help)
                 print_usage
@@ -97,14 +93,14 @@ Usage: $0 [OPTIONS]
 
 Options:
     --hostname HOSTNAME    The hostname of the installation
-    --user USER            Adds a non-root user to the installtion
+    --user USER            Adds a non-root USER to the installtion
     --cmdline CMDLINE      The default kernel command line. System will still be bootable if empty
     --no-device            Don't use a physical device (installs images to build directory)
     --no-cleanup           Skip cleanup on exit
     --no-checksum          Skip checksum verification
     -u, --url URL          Specify custom Alpine minirootfs URL
     -e, --edge             Use Alpine edge repository
-    -v, --verbose          Enable verbose output
+    -v, --verbise          Enable verbose output
     -h, --help             Show this help message
 
 EOF
@@ -120,7 +116,7 @@ log_info() {
 }
 
 log_debug() {
-    [ "$verbose" = "1" ] && printf "%s[DEBUG]%s: %s\n" "$blue" "$white" "$1"
+    [ "$VERBOSE" = "1" ] && printf "%s[DEBUG]%s: %s\n" "$blue" "$white" "$1"
     return 0
 }
 
@@ -137,7 +133,7 @@ unmount_if_mounted() {
 }
 
 cleanup() {
-    [ "$cleanup_happened" = "1" ] && return 0
+    [ "$NO_CLEANUP" = "1" ] && return 0
   
     log_debug "Running cleanup"
   
@@ -147,10 +143,10 @@ cleanup() {
     log_debug "Trying to unmount $pwd/build/$dir"
     umount "$pwd/build/$dir" 2>/dev/null || true
   
-    [ -n "$efi_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$efi_uuid"
-    [ -n "$root_uuid" ] && unmount_if_mounted "/dev/disk/by-uuid/$root_uuid"
+    [ -n "$EFI_UUID" ] && unmount_if_mounted "/dev/disk/by-uuid/$EFI_UUID"
+    [ -n "$ROOT_UUID" ] && unmount_if_mounted "/dev/disk/by-uuid/$ROOT_UUID"
   
-    if [ "$no_device" = "1" ] && [ "$build_successful" = "1" ]; then
+    if [ "$NO_DEVICE" = "1" ] && [ "$build_successful" = "1" ]; then
         mv ./boot ./firmware.squashfs ./rootfs.squashfs ./upperfs.squashfs ./modules-*.squashfs ../
         rm -rf ./*
         mv ../boot ../firmware.squashfs ../rootfs.squashfs ../upperfs.squashfs ./modules-*.squashfs ./
@@ -161,7 +157,7 @@ cleanup() {
         rm -rf build
     fi
   
-    cleanup_happened=1
+    NO_CLEANUP=1
 }
 
 validate_dependencies() {
@@ -172,7 +168,7 @@ validate_dependencies() {
     check_command cd
     check_command mksquashfs
     check_command awk
-    [ "$checksum_check" = "1" ] && check_command sha256sum
+    [ "$CHECKSUM_CHECK" = "1" ] && check_command sha256sum
 }
 
 setup_build_directory() {
@@ -188,15 +184,15 @@ setup_build_directory() {
 }
 
 setup_boot_partition() {
-    if [ "$no_device" = "0" ]; then
+    if [ "$NO_DEVICE" = "0" ]; then
         log_debug "Setting up device boot partition"
-        ../select-device.sh --efi-uuid "$efi_uuid" --root-uuid "$root_uuid"
+        ../select-device.sh --efi-uuid "$EFI_UUID" --root-uuid "$ROOT_UUID"
         
-        efi_uuid=$(awk '{print $1}' ./vfat_uuid)
-        root_uuid=$(awk '{print $1}' ./root_uuid)
+        EFI_UUID=$(awk '{print $1}' ./EFI_UUID)
+        ROOT_UUID=$(awk '{print $1}' ./ROOT_UUID)
         
         mkdir -p "$dir/boot"
-        mount "/dev/disk/by-uuid/$efi_uuid" "$dir/boot" || \
+        mount "/dev/disk/by-uuid/$EFI_UUID" "$dir/boot" || \
             log_error "Failed to mount EFI partition"
     else
         log_debug "Setting up local boot directory"
@@ -207,20 +203,20 @@ setup_boot_partition() {
 
 download_minirootfs() {
     log_info "Downloading Alpine minirootfs"
-    log_debug "URL: $url"
+    log_debug "URL: $URL"
   
-    curl -o "$archive_name.tar.gz" "$url" || \
-        log_error "In download_minirootfs: Failed to download minirootfs from $url"
+    curl -o "$archive_name.tar.gz" "$URL" || \
+        log_error "In download_minirootfs: Failed to download minirootfs from $URL"
 }
 
 download_checksum() {
     log_debug "Downloading checksum file"
-    curl -o "$archive_name.tar.gz.sha256" "$url.sha256" || \
+    curl -o "$archive_name.tar.gz.sha256" "$URL.sha256" || \
         log_error "In download_checksum: Failed to download checksum file"
 }
 
 verify_checksum() {
-    [ "$checksum_check" = "0" ] && return 0
+    [ "$CHECKSUM_CHECK" = "0" ] && return 0
   
     log_debug "Verifying checksum"
     local_checksum=$(sha256sum "$archive_name.tar.gz" | awk '{print $1}')
@@ -237,7 +233,7 @@ extract_minirootfs() {
     log_info "Extracting Alpine minirootfs"
   
     _tar_flags="-xf"
-    [ "$verbose" = "1" ] && _tar_flags="-xvf"
+    [ "$VERBOSE" = "1" ] && _tar_flags="-xvf"
   
     tar $_tar_flags "$archive_name.tar.gz" || \
         log_error "In extract_minirootfs: Failed to extract minirootfs"
@@ -257,7 +253,7 @@ copy_scripts() {
     mkdir -p "$dir/etc/mkinitfs/features.d/"
     mkdir -p "$dir/etc/apk/commit_hooks.d/"
     
-    cp ./root_uuid "$dir/"                                 || log_error "In copy_scripts: Failed to copy root_uuid"
+    cp ./ROOT_UUID "$dir/"                                 || log_error "In copy_scripts: Failed to copy ROOT_UUID"
     cp ../chroot-script.sh "$dir/bin/"                     || log_error "In copy_scripts: Failed to copy chroot-script.sh"
     cp ../squash-upperdir "$dir/bin/"                      || log_error "In copy_scripts: Failed to copy squash-upperdir"
     cp ../squashdir "$dir/etc/init.d/"                     || log_error "In copy_scripts: Failed to copy squashdir"
@@ -275,12 +271,12 @@ run_chroot() {
     log_info "Running chroot script"
   
     _chroot_command="$command"
-    [ "$edge" = "1" ] && _chroot_command="$_chroot_command --edge"
-    [ "$verbose" = "1" ] && _chroot_command="$_chroot_command --verbose"
-    [ "$no_device" = 1 ] && _chroot_command="$_chroot_command --no-device"
-    [ -n "$cmdline" ] && _chroot_command="$_chroot_command --cmdline '$cmdline'"
-    [ -n "$user" ] && _chroot_command="$_chroot_command --user $user"
-    [ -n "$hostname" ] && _chroot_command="$_chroot_command --hostname $hostname"
+    [ "$EDGE" = "1" ] && _chroot_command="$_chroot_command --edge"
+    [ "$VERBOSE" = "1" ] && _chroot_command="$_chroot_command --verbose"
+    [ "$NO_DEVICE" = 1 ] && _chroot_command="$_chroot_command --no-device"
+    [ -n "$CMDLINE" ] && _chroot_command="$_chroot_command --cmdline '$CMDLINE'"
+    [ -n "$USER" ] && _chroot_command="$_chroot_command --user $USER"
+    [ -n "$ALPINE_HOSTNAME" ] && _chroot_command="$_chroot_command --hostname $ALPINE_HOSTNAME"
 
     log_debug "Chroot command: $_chroot_command"
     ../auto-chroot.sh "$dir" "$_chroot_command" || \
@@ -326,7 +322,7 @@ create_squashfs_images() {
 deploy_to_root_device() {
     log_info "Deploying images to root device"
 
-    mount "/dev/disk/by-uuid/$root_uuid" "$dir" || \
+    mount "/dev/disk/by-uuid/$ROOT_UUID" "$dir" || \
         log_error "In deploy_to_root_device: Failed to mount root device"
 
     cp ./firmware.squashfs "$dir/" && rm ./firmware.squashfs
@@ -335,7 +331,7 @@ deploy_to_root_device() {
     cp ./upperfs-backup.squashfs "$dir/" && rm ./upperfs-backup.squashfs
     cp "./modules-$_modules_version.squashfs" "$dir/" && rm "./modules-$_modules_version.squashfs"
 
-    umount "/dev/disk/by-uuid/$root_uuid" || \
+    umount "/dev/disk/by-uuid/$ROOT_UUID" || \
         log_error "In deploy_to_root_device: Failed to unmount root device"
 }
 
@@ -343,11 +339,12 @@ main() {
     trap 'cleanup; exit 1' INT TERM
     trap cleanup EXIT INT TERM
 
+    . ./alpine.conf
     parse_arguments "$@"
-    [ "$(id -u)" != 0 ] && log_error "In main: Please run as root."
-    validate_dependencies
 
-    pwd="$PWD"
+    [ "$(id -u)" != 0 ] && log_error "In main: Please run as root."
+
+    validate_dependencies
 
     setup_build_directory # Includes cd ./build
     setup_boot_partition
@@ -356,7 +353,7 @@ main() {
 
     download_minirootfs
 
-    [ "$checksum_check" = "1" ] && {
+    [ "$CHECKSUM_CHECK" = "1" ] && {
         log_debug "Verifying checksum"
         download_checksum
         verify_checksum
@@ -371,11 +368,11 @@ main() {
     run_chroot
     create_squashfs_images
 
-    [ "$no_device" != 1 ] && deploy_to_root_device
+    [ "$NO_DEVICE" != 1 ] && deploy_to_root_device
 
     build_successful=1
     log_info "Build completed successfully!"
-    { [ "$no_device" = "1" ] && [ -z "$root_uuid" ]; } && log_info "Build completed, but system may not be bootable!"
+    { [ "$NO_DEVICE" = "1" ] && [ -z "$ROOT_UUID" ]; } && log_info "Build completed, but system may not be bootable!"
 }
 
 main "$@"
