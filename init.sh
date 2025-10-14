@@ -25,7 +25,7 @@ log_info() {
 }
 
 log_warn() {
-    printf "[WARNING]: %s\n" "$1"
+    printf "[WARNING]: %s\n" "$1">&2
     return 1
 }
 
@@ -186,7 +186,6 @@ setup_overlay() {
     mkdir -p /sysroot/upper \
         /sysroot/rootfs \
         /sysroot/overlay_root \
-        /sysroot/firmware \
         /sysroot/modules
 
     # Use a zram device for upperfs if enabled, otherwise use tmpfs
@@ -203,10 +202,6 @@ setup_overlay() {
     # Mount squashfs root filesystem. This is NOT in RAM.
     mount -t squashfs /mnt/rootfs.squashfs /sysroot/rootfs -o loop \
         || emergency_shell "Failed to mount rootfs.squashfs"
-
-    # Mount firmware filesystem
-    mount -t squashfs /mnt/firmware.squashfs /sysroot/firmware \
-        || emergency_shell "Failed to mount firmware.squashfs"
 
     mount -t squashfs "/mnt/modules-$(uname -r).squashfs" /sysroot/modules \
         || emergency_shell "Failed to mount modules-$(uname -r).squashfs"
@@ -229,15 +224,13 @@ setup_overlay() {
         fi
     fi
 
-    # Create overlay filesystem
-    mount -t overlay overlay -o lowerdir=/sysroot/firmware:/sysroot/modules:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
+    mount -t overlay overlay -o lowerdir=/sysroot/modules:/sysroot/rootfs,upperdir=/sysroot/upper/upper,workdir=/sysroot/upper/work /sysroot/overlay_root \
         || emergency_shell "Failed to create overlay filesystem"
 }
 
 setup_switchroot() {
     mkdir -p /sysroot/overlay_root/persist
 
-    # Move mounts to new root
     mount --move /mnt /sysroot/overlay_root/persist
     mount --move /proc /sysroot/overlay_root/proc
     mount --move /sys /sysroot/overlay_root/sys
@@ -246,9 +239,6 @@ setup_switchroot() {
     # Makes upperdir and lowerdir accessible from new root
     mkdir -p /sysroot/overlay_root/mnt/rootfs
     mount --move /sysroot/rootfs /sysroot/overlay_root/mnt/rootfs
-
-    mkdir -p /sysroot/overlay_root/mnt/firmware
-    mount --move /sysroot/firmware /sysroot/overlay_root/mnt/firmware
 
     mkdir -p /sysroot/overlay_root/mnt/modules
     mount --move /sysroot/modules /sysroot/overlay_root/mnt/modules
@@ -276,7 +266,7 @@ main() {
 
     wait_for_devices
 
-    mkdir /mnt
+    mkdir /mnt 2>/dev/null || true
 
     mount_device
 

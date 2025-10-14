@@ -92,6 +92,8 @@ print_usage() {
 Usage: $0 [OPTIONS]
 
 Options:
+    --efi-uuid UUID        The UUID of the EFI System Partition of the installation
+    --root-uuid UUID       The UUID of the root filesystem of the installation
     --hostname HOSTNAME    The hostname of the installation
     --user USER            Adds a non-root USER to the installtion
     --cmdline CMDLINE      The default kernel command line. System will still be bootable if empty
@@ -147,9 +149,9 @@ cleanup() {
     [ -n "$ROOT_UUID" ] && unmount_if_mounted "/dev/disk/by-uuid/$ROOT_UUID"
   
     if [ "$NO_DEVICE" = "1" ] && [ "$build_successful" = "1" ]; then
-        mv ./boot ./firmware.squashfs ./rootfs.squashfs ./upperfs.squashfs ./modules-*.squashfs ../
+        mv ./boot ./rootfs.squashfs ./upperfs.squashfs ./modules-*.squashfs ../
         rm -rf ./*
-        mv ../boot ../firmware.squashfs ../rootfs.squashfs ../upperfs.squashfs ./modules-*.squashfs ./
+        mv ../boot ../rootfs.squashfs ../upperfs.squashfs ./modules-*.squashfs ./
         cd "$pwd" || true
         return 0
     else
@@ -291,18 +293,12 @@ create_squashfs_images() {
 
     unmount_if_mounted "$dir/boot"
 
-    _firmware_path=$(realpath "./alpine/lib/firmware/")
     _modules_version=$(ls "./alpine/lib/modules")
     _modules_path=$(realpath "./alpine/lib/modules/$_modules_version")
 
     log_debug "Creating rootfs.squashfs"
-    mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_firmware_path}/" -e "${_modules_path}/" || \
+    mksquashfs "$dir" rootfs.squashfs -comp zstd -e "${_modules_path}/" || \
         log_error "In create_squashfs_images: Failed to create rootfs.squashfs"
-
-    log_debug "Creating firmware.squashfs"
-    cd ./alpine
-    mksquashfs lib/firmware ../firmware.squashfs -no-compression -no-strip || \
-        log_error "In create_squashfs_images: Failed to create firmware.squashfs"
 
     log_debug "Creating modules-$_modules_version.squashfs"
     mksquashfs "lib/modules/$_modules_version" "../modules-$_modules_version.squashfs" -no-compression -no-strip || \
@@ -325,7 +321,6 @@ deploy_to_root_device() {
     mount "/dev/disk/by-uuid/$ROOT_UUID" "$dir" || \
         log_error "In deploy_to_root_device: Failed to mount root device"
 
-    cp ./firmware.squashfs "$dir/" && rm ./firmware.squashfs
     cp ./rootfs.squashfs "$dir/" && rm ./rootfs.squashfs
     cp ./upperfs.squashfs "$dir/" && rm ./upperfs.squashfs
     cp ./upperfs-backup.squashfs "$dir/" && rm ./upperfs-backup.squashfs
