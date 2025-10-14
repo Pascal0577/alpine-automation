@@ -9,6 +9,7 @@ if [ "$1" = "pre-commit" ]; then
 
     mkdir -p "$STATE_DIR" 
     echo 0 > "$FIRST_INSTALL"
+    echo 0 > "$NEEDS_REBUILD"
 
     if [ -d /lib/modules ]; then
         prev_version="$(ls /lib/modules)"

@@ -10,7 +10,7 @@ use_zram="false"
 zram_size="100%"
 zram_compression="zstd"
 
-boot_type="default_boot"
+clean_boot=0
 squashfs_version="upperfs"
 
 full_ramdisk=0
@@ -60,9 +60,9 @@ parse_cmdline() {
             zram.comp=*)
                 zram_compression=${arg#"zram.comp="}
                 log_info "zram compression: $zram_compression" ;;
-            boot_type=*)
-                boot_type=${arg#"boot_type="}
-                log_info "boot_type: $boot_type" ;;
+            clean_boot=*)
+                clean_boot=${arg#"clean_boot="}
+                log_info "Clean boot: $clean_boot" ;;
             cryptdevice=UUID=*)
                 temp=${arg#"cryptdevice=UUID="}
                 crypt_uuid=${temp%%:*}
@@ -220,20 +220,14 @@ setup_overlay() {
 
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
-    if [ "$boot_type" != "clean_boot" ]; then
+    if [ "$clean_boot" != 1 ]; then
         if [ -f "/mnt/$squashfs_version.squashfs" ]; then
             unsquashfs -f -d /sysroot/upper/upper "/mnt/$squashfs_version.squashfs" \
               || emergency_shell "Failed to unsquash $squashfs_version.squashfs"
-        elif [ -f "/mnt/$squashfs_version-backup.squashfs" ]; then  
-            # Try backup boot if we can't default boot
-            log_warn "/mnt/$squashfs_version.squashfs not found. Trying backup."
-            boot_type="backup_boot"
-            unsquashfs -f -d /sysroot/upper/upper /mnt/upperfs-backup.squashfs \
-              || emergency_shell "Failed to unsquash upperfs-backup.squashfs"
         else
             # Fallback to clean boot if we can't backup boot
             log_warn "Backup not found. Starting clean boot."
-            boot_type="clean_boot"
+            clean_boot=1
         fi
     fi
 
@@ -260,7 +254,7 @@ setup_switchroot() {
         mount --move /sysroot/modules /sysroot/overlay_root/mnt/modules
 
         # If clean boot is active, then make sure the upperdir lives in a place it won't be squashed
-        if [ "$boot_type" = "clean_boot" ]; then
+        if [ "$clean_boot" = 1 ]; then
             mkdir -p /sysroot/overlay_root/mnt/upperdir-nosave
             mount --bind /sysroot/upper/upper /sysroot/overlay_root/mnt/upperdir-nosave
         else
@@ -291,7 +285,8 @@ main() {
 
     setup_switchroot
 
-    log_info "BOOT TYPE IS: $boot_type"
+    log_info "Squashfs Image is: $squashfs_version"
+    log_info "Clean Boot: $clean_boot"
 
     exec switch_root /sysroot/overlay_root /sbin/init
 }

@@ -9,6 +9,6 @@ depend() {
 
 start() {
 	ebegin "Squashing Upperdir..."
-    /bin/squash-upperdir	
+    /sbin/squash-upperdir	
 	eend $?
 }

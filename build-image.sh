@@ -257,7 +257,9 @@ copy_scripts() {
     
     cp ./ROOT_UUID "$dir/"                                 || log_error "In copy_scripts: Failed to copy ROOT_UUID"
     cp ../chroot-script.sh "$dir/bin/"                     || log_error "In copy_scripts: Failed to copy chroot-script.sh"
-    cp ../squash-upperdir "$dir/bin/"                      || log_error "In copy_scripts: Failed to copy squash-upperdir"
+    cp ../squash-upperdir "$dir/sbin/"                     || log_error "In copy_scripts: Failed to copy squash-upperdir"
+    cp ../rebuild-grub.sh "$dir/sbin/"                     || log_error "In copy_scripts: Failed to copy squash-upperdir"
+    cp ../bootloader-rebuild "$dir/etc/init.d/"            || log_error "In copy_scripts: Failed to copy squash-upperdir"
     cp ../squashdir "$dir/etc/init.d/"                     || log_error "In copy_scripts: Failed to copy squashdir"
     cp ../init.sh "$dir/usr/share/mkinitfs/initramfs-init" || log_error "In copy_scripts: Failed to copy initramfs-init"
     cp ../init.sh "$dir/usr/share/mkinitfs/init.sh"        || log_error "In copy_scripts: Failed to copy init.sh"

@@ -156,6 +156,7 @@ configure_services() {
     rc-update add hwdrivers boot         || log_error "In configure_services: Failed to add critical service"
     rc-update add elogind default        || log_error "In configure_services: Failed to add critical service"
     rc-update add squashdir shutdown     || log_error "In configure_services: Failed to add critical service"
+    rc-update add bootloader-rebuild shutdown || log_error "In configure_services: Failed to add critical service"
     rc-update add dbus default           || log_error "In configure_services: Failed to add critical service"
     rc-update add udev sysinit           || log_error "In configure_services: Failed to add critical service"
     rc-update add udev-trigger sysinit   || log_error "In configure_services: Failed to add critical service"
@@ -180,25 +181,30 @@ install_bootloader() {
         || log_error "In install_bootloader: grub-install failed"
 
     log_debug "Creating grub configuration at /boot/grub/grub.cfg"
-    cat > /boot/grub/grub.cfg << EOF
-set timeout=10
-set default=0
+    cat > /boot/grub/grub.cfg << -EOF
+        set timeout=10
+        set default=0
 
-menuentry "Alpine Linux (Default)" {
-    linux /vmlinuz-lts $cmdline boot_type=default_boot
-    initrd /initramfs-lts
-}
+        menuentry "Alpine Linux (Default)" {
+            linux /vmlinuz-lts $cmdline squashfs_version=upperfs
+            initrd /initramfs-lts
+        }
 
-menuentry "Alpine Linux (Backup)" {
-    linux /vmlinuz-lts $cmdline boot_type=backup_boot
-    initrd /initramfs-lts
-}
+        menuentry "Alpine Linux (Backup)" {
+            linux /vmlinuz-lts $cmdline squashfs_version=upperfs-backup
+            initrd /initramfs-lts
+        }
 
-menuentry "Alpine Linux (Clean Boot)" {
-    linux /vmlinuz-lts $cmdline boot_type=clean_boot
-    initrd /initramfs-lts
-}
-EOF
+        menuentry "Alpine Linux (Clean Boot)" {
+            linux /vmlinuz-lts $cmdline clean_boot=1
+            initrd /initramfs-lts
+        }
+
+        menuentry "Alpine Linux (Full RAM Disk)" {
+            linux /vmlinuz-lts $cmdline full_ramdisk=1 squashfs_version=upperfs
+            initrd /initramfs-lts
+        }
+-EOF
 }
 
 setup_user() {

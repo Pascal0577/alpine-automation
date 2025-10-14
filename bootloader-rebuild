@@ -1,0 +1,16 @@
+#!/sbin/openrc-run
+description="Find all squashfs images and regenerate grub config"
+rc_shutdown=yes
+
+depend() {
+	need local
+	need localmount
+    after squashdir
+    before shutdown
+}
+
+start() {
+	ebegin "Rebuilding Grub Configuration..."
+    /sbin/rebuild-grub.sh
+	eend $?
+}
