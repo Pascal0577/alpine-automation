@@ -11,7 +11,7 @@ zram_size="100%"
 zram_compression="zstd"
 
 clean_boot=0
-squashfs_version="upperfs"
+squashfs_version="upperfs.squashfs"
 
 full_ramdisk=0
 
@@ -47,7 +47,7 @@ parse_cmdline() {
                 log_info "Using a full ramdisk" ;;
             squashfs_version=*)
                 squashfs_version=${arg#"squashfs_version="}
-                log_info "Using image: $squashfs_version.squashfs" ;;
+                log_info "Using image: $squashfs_version" ;;
             root=UUID=*)
                 root_uuid=${arg#"root=UUID="}
                 log_info "Found filesystem with UUID $root_uuid" ;;
@@ -221,9 +221,9 @@ setup_overlay() {
 
     # Extract upper filesystem if it exists and we aren't doing a clean boot
     if [ "$clean_boot" != 1 ]; then
-        if [ -f "/mnt/$squashfs_version.squashfs" ]; then
-            unsquashfs -f -d /sysroot/upper/upper "/mnt/$squashfs_version.squashfs" \
-              || emergency_shell "Failed to unsquash $squashfs_version.squashfs"
+        if [ -f "/mnt/$squashfs_version" ]; then
+            unsquashfs -f -d /sysroot/upper/upper "/mnt/$squashfs_version" \
+              || emergency_shell "Failed to unsquash $squashfs_version"
         else
             # Fallback to clean boot if we can't backup boot
             log_warn "Backup not found. Starting clean boot."

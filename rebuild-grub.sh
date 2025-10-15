@@ -32,6 +32,8 @@ get_base_cmdline() {
                 continue ;;
             clean_boot=1)
                 exit 0 ;;
+            full_ramdisk=1)
+                exit 0 ;;
             *)
                 cmdline="$cmdline $arg" ;;
         esac
@@ -44,27 +46,43 @@ find_images() {
         ! -name '*-backup.squashfs' \
         ! -name 'rootfs.squashfs' \
         ! -name 'modules-*.squashfs' \
-        > "$IMAGE_LIST" || log_error "In find_images: Getting list of squashfs failed"
+        > "$IMAGE_LIST-tmp" || log_error "In find_images: Getting list of squashfs failed"
+    # Remove the '/persist' before each item in the list
+    cat "$IMAGE_LIST-tmp" | sed 's|\/persist\/||' > "$IMAGE_LIST"
 }
 
 generate_config() {
-    IFS= read -r first_line < "$IMAGE_LIST"
-
     cat >> /boot/grub/grub.cfg << -EOF
         set timeout=10
         set default=0
 
 -EOF
 
-    while IFS= read -r line; do
-    cat >> /boot/grub/grub.cfg << -EOF
-        menuentry "Alpine Linux ($line)" {
-            linux /vmlinuz-lts $cmdline squashfs_version=$line
-            initrd /initramfs-lts
-        }
+    # I want the default option to be presented first
+    while IFS= read -r line; do [ "$line" = "upperfs.squashfs" ] && {
+        if [ "$line" = "upperfs.squashfs" ]; then
+            cat >> /boot/grub/grub.cfg << -EOF
+                menuentry "Alpine Linux (Default)" {
+                    linux /vmlinuz-lts $cmdline squashfs_version=$line
+                    initrd /initramfs-lts
+                }
 -EOF
+        fi
+    }
     done < "$IMAGE_LIST"
 
+    # Add the rest of the entries normally
+    while IFS= read -r line; do [ "$line" != "upperfs.squashfs" ] && {
+        cat >> /boot/grub/grub.cfg << -EOF
+            menuentry "Alpine Linux ($line)" {
+                linux /vmlinuz-lts $cmdline squashfs_version=$line
+                initrd /initramfs-lts
+            }
+-EOF
+    }
+    done < "$IMAGE_LIST"
+
+    # Add the special entries
     cat >> /boot/grub/grub.cfg << -EOF
 
         menuentry "Alpine Linux (Clean Boot)" {
@@ -72,8 +90,8 @@ generate_config() {
             initrd /initramfs-lts
         }
 
-        menuentry "Alpine Linux (Full RAM disk $first_line)" {
-            linux /vmlinuz-lts $cmdline full_ramdisk=1 squashfs_version=$first_line
+        menuentry "Alpine Linux (Full RAM disk with upperfs.squashfs)" {
+            linux /vmlinuz-lts $cmdline full_ramdisk=1 squashfs_version=upperfs.squashfs
             initrd /initramfs-lts
         }
 -EOF

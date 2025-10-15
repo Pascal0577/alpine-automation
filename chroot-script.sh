@@ -186,12 +186,12 @@ install_bootloader() {
         set default=0
 
         menuentry "Alpine Linux (Default)" {
-            linux /vmlinuz-lts $cmdline squashfs_version=upperfs
+            linux /vmlinuz-lts $cmdline squashfs_version=upperfs.squashfs
             initrd /initramfs-lts
         }
 
         menuentry "Alpine Linux (Backup)" {
-            linux /vmlinuz-lts $cmdline squashfs_version=upperfs-backup
+            linux /vmlinuz-lts $cmdline squashfs_version=upperfs-backup.squashfs
             initrd /initramfs-lts
         }
 
@@ -200,8 +200,8 @@ install_bootloader() {
             initrd /initramfs-lts
         }
 
-        menuentry "Alpine Linux (Full RAM Disk)" {
-            linux /vmlinuz-lts $cmdline full_ramdisk=1 squashfs_version=upperfs
+        menuentry "Alpine Linux (Full RAM Disk with upperfs.squashfs)" {
+            linux /vmlinuz-lts $cmdline full_ramdisk=1 squashfs_version=upperfs.squashfs
             initrd /initramfs-lts
         }
 -EOF
