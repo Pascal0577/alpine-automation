@@ -31,7 +31,7 @@ elif [ "$1" = "post-commit" ]; then
         [ "$(cat $NEEDS_REBUILD)" = 1 ] && {
             mkdir "$TMP_DIR"
             cp -r "/lib/modules/$new_version" "$TMP_DIR"
-            mksquashfs "$TMP_DIR" "modules-$new_version.squashfs" -comp zstd || {
+            mksquashfs "$TMP_DIR" "/persist/modules-$new_version.squashfs" -comp zstd || {
                 echo "ERROR CREATING MODULE SQUASHFS."
                 rm -rf "$TMP_DIR"
             }
