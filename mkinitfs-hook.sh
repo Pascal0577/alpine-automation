@@ -3,10 +3,11 @@ readonly STATE_DIR="/run/mkinitfs-hook"
 readonly VERSION="$STATE_DIR/version"
 readonly NEEDS_REBUILD="$STATE_DIR/needs-rebuild"
 
+mkdir -p "$STATE_DIR"
+echo 0 > "$NEEDS_REBUILD"
+
 if [ "$1" = "pre-commit" ]; then
     
-    mkdir -p "$STATE_DIR"
-    echo 0 > "$NEEDS_REBUILD"
     prev_version="$(apk list -I | grep -E '^mkinitfs-[0-9]' | awk '{print $1}')"
   
     # Just in case
@@ -22,6 +23,7 @@ elif [ "$1" = "post-commit" ]; then
 
     [ "$(cat "$NEEDS_REBUILD")" = 1 ] && {
         ln -sf /usr/share/mkinitfs/init.sh /usr/share/mkinitfs/initramfs-init
+        cat "$NEEDS_REBUILD"
         mkinitfs || {
             # Fallback
             mkinitfs "$(ls /lib/modules)"

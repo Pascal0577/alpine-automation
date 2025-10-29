@@ -1,43 +1,31 @@
 #!/bin/sh
-readonly STATE_DIR="/run/kernel-hook"
-readonly VERSION="$STATE_DIR/kernel-version"
-readonly NEEDS_REBUILD="$STATE_DIR/kernel-needs-rebuild"
-readonly TMP_DIR="$STATE_DIR/KERNEL-MODULES-$$/"
-readonly FIRST_INSTALL="$STATE_DIR/first-install"
+readonly STATE_DIR="/kernel-hook"
+readonly TMP_DIR="$STATE_DIR/KERNEL-MODULES-$$"
+FIRST_INSTALL=0
 
-if [ "$1" = "pre-commit" ]; then
+if [ "$1" = "post-commit" ]; then
+    [ -f /first_install ] && FIRST_INSTALL=1
 
-    mkdir -p "$STATE_DIR" 
-    echo 0 > "$FIRST_INSTALL"
-    echo 0 > "$NEEDS_REBUILD"
-
-    if [ -d /lib/modules ]; then
-        prev_version="$(ls /lib/modules)"
-    else
-        echo 1 > "$FIRST_INSTALL"
-    fi
-
-    [ -z "$prev_version" ] && echo 1 > "$NEEDS_REBUILD"
-    echo "$prev_version" > "$VERSION"
-
-elif [ "$1" = "post-commit" ]; then
-
-    [ "$(cat "$FIRST_INSTALL")" = 0 ] && {
-        prev_version="$(cat "$VERSION")"
-        new_version="$(ls /lib/modules)"
-
-        [ "$prev_version" != "$new_version" ] && echo 1 > "$NEEDS_REBUILD"
-
-        [ "$(cat $NEEDS_REBUILD)" = 1 ] && {
-            mkdir "$TMP_DIR"
-            cp -r "/lib/modules/$new_version" "$TMP_DIR"
-            mksquashfs "$TMP_DIR" "/persist/modules-$new_version.squashfs" -comp zstd || {
-                echo "ERROR CREATING MODULE SQUASHFS."
-                rm -rf "$TMP_DIR"
+    for kernel in /lib/modules/*; do
+        if [ -d "$kernel" ] && [ ! -f "/persist/$kernel" ]; then
+            kernel="$(basename "$kernel")"
+            mkdir -p "${TMP_DIR:?}/$kernel"
+            cp -r "/lib/modules/$kernel" "${TMP_DIR:?}/$kernel"
+            mksquashfs "${TMP_DIR:?}/$kernel" "${STATE_DIR:?}/modules-$kernel.squashfs" -comp zstd || {
+                echo "ERROR CREATING MODULE SQUASHFS: $kernel"
+                rm -rf "${TMP_DIR:?}/$kernel"
             }
-            mv "modules-$new_version.squashfs" /
-        }
-    }
-    rm -rf "$STATE_DIR"
 
+            #if [ "$FIRST_INSTALL" = 1 ]; then
+            #    mv "${STATE_DIR:?}/modules-$kernel.squashfs" /
+            if [ -d /persist ]; then
+                mv "${STATE_DIR:?}/modules-$kernel.squashfs" /persist
+            else
+                echo "ERROR: /persist does not exist. Exiting."
+                rm -rf ${STATE_DIR:?}
+                exit 1
+            fi
+        fi
+    done
+    rm -rf ${STATE_DIR:?}
 fi
