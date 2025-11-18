@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -eu
 
 # Default configuration
 readonly BUILD_DIR="alpine"
@@ -23,11 +23,10 @@ USER=""
 ALPINE_HOSTNAME=""
 
 # Colors for log messages
-red="$(printf '\033[0;31m')"
-blue="$(printf '\033[0;34m')"
-green="$(printf '\033[0;32m')"
-white="$(printf '\033[0m')"
-
+red="\033[0;31m"
+blue="\033[0;34m"
+green="\033[0;32m"
+white="\033[0m"
 
 parse_arguments() {
     while [ $# -gt 0 ]; do
@@ -109,16 +108,16 @@ EOF
 }
 
 log_error() {
-    printf "%s[ERROR]%s: %s\n" "$red" "$white" "$1" >&2
+    printf " %b*%b: %s\n" "$red" "$white" "$1" >&2
     exit 1
 }
 
 log_info() {
-    printf "%s[INFO]%s: %s\n" "$green" "$white" "$1"
+    printf " %b*%b: %s\n" "$green" "$white" "$1"
 }
 
 log_debug() {
-    [ "$VERBOSE" = "1" ] && printf "%s[DEBUG]%s: %s\n" "$blue" "$white" "$1"
+    [ "$VERBOSE" = "1" ] && printf " %b*%b: %s\n" "$blue" "$white" "$1"
     return 0
 }
 
