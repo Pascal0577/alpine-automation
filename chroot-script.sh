@@ -3,6 +3,7 @@
 edge=0
 verbose=0
 root_uuid="$(cat ./ROOT_UUID)"
+efi_uuid="$(cat ./EFI_UUID)"
 cmdline="root=UUID=$root_uuid"
 user=""
 hostname=""
@@ -67,6 +68,7 @@ parse_arguments() {
     done
 
     rm ./ROOT_UUID
+    rm ./EFI_UUID
 }
 
 configure_etc() {
@@ -81,6 +83,11 @@ configure_etc() {
         echo "$hostname" > /etc/hostname
     fi
     
+    log_debug "Generating fstab"
+    cat > /etc/fstab << EOF
+/dev/disk/by-uuid/$efi_uuid  /boot vfat umask=0077 0 2
+/dev/disk/by-uuid/$root_uuid /     ext4 defaults   0 0
+EOF
 
     log_debug "Configuring interfaces"
     cat > /etc/network/interfaces << EOF

@@ -256,6 +256,7 @@ copy_scripts() {
     mkdir -p "$dir/etc/apk/commit_hooks.d/"
     
     cp ./ROOT_UUID "$dir/"                                 || log_error "In copy_scripts: Failed to copy ROOT_UUID"
+    cp ./EFI_UUID "$dir/"                                  || log_error "In copy_scripts: Failed to copy EFI_UUID"
     cp ../chroot-script.sh "$dir/bin/"                     || log_error "In copy_scripts: Failed to copy chroot-script.sh"
     cp ../squash-upperdir "$dir/sbin/"                     || log_error "In copy_scripts: Failed to copy squash-upperdir"
     cp ../rebuild-grub.sh "$dir/sbin/"                     || log_error "In copy_scripts: Failed to copy squash-upperdir"
