@@ -185,7 +185,18 @@ mount_device() {
     fi
 
     # Attempt to mount filesystem based off UUID
-    mount "/dev/disk/by-uuid/$root_uuid" /mnt
+    _device="/dev/disk/by-uuid/$root_uuid"
+    log_info "Trying to mount $_device"
+    mount "$_device" /mnt && return 0
+
+    # Try to mount using fstab if available as fallback
+    [ -f /etc/fstab ] && {
+        _device="$(awk '$2 == "/" {print $1}' /etc/fstab)"
+        log_info "Trying to mount $_device"
+        mount "$_device" /mnt && return 0
+    }
+
+    emergency_shell "Could not mount root device"
 }
 
 setup_overlay() {
