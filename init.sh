@@ -2,6 +2,10 @@
 
 # TODO: Add Plymouth support
 
+red="\e[0;31m"
+green="\e[0;32m"
+default="\e[0m"
+
 root_uuid=""
 crypt_uuid=""
 crypt_name=""
@@ -16,14 +20,14 @@ squashfs_version="upperfs.squashfs"
 full_ramdisk=0
 
 emergency_shell() {
-    printf "[ERROR]: %s\n" "$1">&2
+    printf " %b*%b %s\n" "$red" "$default" "$1" >&2
     echo "Dropping to emergency shell..."
     setsid sh -c 'sh -i </dev/console >/dev/console 2>&1'
     exit 0
 }
 
 log_info() {
-    printf "[INFO]: %s\n" "$1"
+    printf " %b*%b %s\n" "$green" "$default" "$1"
 }
 
 log_warn() {

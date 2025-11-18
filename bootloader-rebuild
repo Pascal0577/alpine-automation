@@ -11,6 +11,6 @@ depend() {
 
 start() {
 	ebegin "Rebuilding Grub Configuration..."
-    /sbin/rebuild-grub.sh
+    /sbin/rebuild-grub
 	eend $?
 }
