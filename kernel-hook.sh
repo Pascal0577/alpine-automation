@@ -1,25 +1,36 @@
 #!/bin/sh
-readonly STATE_DIR="/kernel-hook"
+readonly STATE_DIR="/var/kernel-hook"
 readonly TMP_DIR="$STATE_DIR/KERNEL-MODULES-$$"
 
-if [ "$1" = "post-commit" ]; then
-    for kernel in /lib/modules/*; do
-        kernel="$(basename "$kernel")"
-        if [ -d "$kernel" ] && [ ! -f "/persist/$kernel" ]; then
-            mkdir -p "${TMP_DIR:?}/$kernel"
-            cp -r "/lib/modules/$kernel" "${TMP_DIR:?}/$kernel"
-            mksquashfs "${TMP_DIR:?}/$kernel" "${STATE_DIR:?}/modules-$kernel.squashfs" -comp zstd || {
-                echo "ERROR CREATING MODULE SQUASHFS: $kernel"
-                rm -rf "${TMP_DIR:?}/$kernel"
-            }
-            if [ -d /persist ]; then
-                mv "${STATE_DIR:?}/modules-$kernel.squashfs" /persist
-            else
-                echo "ERROR: /persist does not exist. Exiting."
-                rm -rf ${STATE_DIR:?}
+set -eu
+
+cleanup() {
+    [ -d "$STATE_DIR" ] && rm -rf "${STATE_DIR:?}"
+}
+
+if [ "${1:-}" = "post-commit" ] && [ -d /persist ]; then
+    trap cleanup INT TERM EXIT
+    
+    # This is so the installation doesn't fail
+    mkdir -p /lib/modules
+    command -v "mksquashfs" >/dev/null || echo "Command check failed!"
+
+    for dir in /lib/modules/*; do
+        kernel="$(basename "$dir")"
+        if [ -d "/lib/modules/$kernel" ] && [ ! -e "/persist/modules-$kernel" ]; then
+            kernel_dir="${TMP_DIR:?}/$kernel"
+            out="${STATE_DIR:?}/modules-$kernel.squashfs"
+
+            mkdir -p "$kernel_dir"
+            cp -r "/lib/modules/$kernel" "$kernel_dir" || exit 1
+
+            mksquashfs "$kernel_dir" "$out" -comp zstd || {
+                echo "ERROR CREATING MODULE SQUASHFS: $kernel" >&2
                 exit 1
-            fi
+            }
+            mv "${STATE_DIR:?}/modules-$kernel.squashfs" /persist
         fi
     done
-    rm -rf ${STATE_DIR:?}
+elif [ ! -d /persist ]; then
+    echo "WARNING: /persist does not exist."
 fi

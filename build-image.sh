@@ -334,7 +334,6 @@ deploy_to_root_device() {
 }
 
 main() {
-    trap 'cleanup; exit 1' INT TERM
     trap cleanup EXIT INT TERM
 
     . ./alpine.conf

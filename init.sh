@@ -104,18 +104,18 @@ load_modules() {
 }
 
 wait_for_devices() {
-  # Wait until block devices are populated
-  mkdir -p /dev/disk/by-uuid/ 2>/dev/null || true
-  for i in $(seq 1 200); do
-      for uuid in /dev/disk/by-uuid/*; do
-        [ -e "$uuid" ] && {
-          return 0
-        }
-      done
-      sleep 0.05
-  done
+    # Wait until block devices are populated
+    mkdir -p /dev/disk/by-uuid/ 2>/dev/null || true
+    for i in $(seq 1 200); do
+        for uuid in /dev/disk/by-uuid/*; do
+            [ -e "$uuid" ] && {
+                return 0
+            }
+        done
+        sleep 0.05
+    done
 
-  emergency_shell "No filesystems found. /dev/disk/by-uuid/ is empty."
+    emergency_shell "No filesystems found. /dev/disk/by-uuid/ is empty."
 }
 
 # Setup zram block device for overlay upper directory
@@ -163,6 +163,7 @@ setup_zram() {
 }
 
 open_encrypted_filesystem() {
+    # Try 3 times
     for i in 1 2 3; do
         if cryptsetup open --type luks UUID="$1" "$2"; then
             return 0
