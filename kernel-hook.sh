@@ -27,6 +27,8 @@ if [ "${1:-}" = "post-commit" ] && [ -d /persist ]; then
             [ "$(uname -r)" != "$kernel" ] && rm -rf "/mnt/upperdir/lib/modules/${kernel:?}"
         fi
     done
+
+    [ -e /sbin/rebuild-grub ] && /sbin/rebuild-grub || true
 elif [ ! -d /persist ]; then
     echo "WARNING: /persist does not exist."
 fi
